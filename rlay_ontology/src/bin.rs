@@ -4,8 +4,6 @@ extern crate multibase;
 extern crate multihash;
 extern crate rlay_ontology;
 
-use multihash::encode;
-use multihash::Hash;
 use itertools::Itertools;
 use multibase::{encode as base_encode, Base};
 use rlay_ontology::ontology::{Annotation, Class};
@@ -34,7 +32,7 @@ impl<'a> std::fmt::Display for SolidityBytesChunked<'a> {
                 .chunks(1)
                 .map(|n| n.iter().map(|m| format!("0x{:02x}", m)).format(""))
                 .collect::<Vec<_>>()
-        );
+        ).unwrap();
         Ok(())
     }
 }
