@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 
 // Include the `items` module, which is generated from items.proto.
 pub mod ontology {
-    include!(concat!(env!("OUT_DIR"), "/spread.ontology.rs"));
+    include!(concat!(env!("OUT_DIR"), "/rlay.ontology.rs"));
 
     use multihash::encode;
     use multihash::Hash;
@@ -161,8 +161,7 @@ impl ToCidUnknown for [u8] {
 
         let version = Version::from(raw_version)?;
         if raw_codec != permitted {
-            // TODO: spelling; https://github.com/ipld/rust-cid/pull/10
-            return Err(CidError::UnkownCodec);
+            return Err(CidError::UnknownCodec);
         }
         let codec = Codec::Unknown(raw_codec);
         let hash = &self[cur.position() as usize..];
