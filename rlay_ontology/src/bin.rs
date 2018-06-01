@@ -2,13 +2,13 @@ extern crate cid;
 extern crate itertools;
 extern crate multibase;
 extern crate multihash;
-extern crate spread_ontology;
+extern crate rlay_ontology;
 
 use multihash::encode;
 use multihash::Hash;
 use itertools::Itertools;
 use multibase::{encode as base_encode, Base};
-use spread_ontology::ontology::{Annotation, Class};
+use rlay_ontology::ontology::{Annotation, Class};
 use cid::ToCid;
 use std::collections::BTreeMap;
 
@@ -43,7 +43,7 @@ pub fn main() {
     println!(
         "{}",
         SolidityBytesChunked(
-            &spread_ontology::create_label_annotation(String::new())
+            &rlay_ontology::create_label_annotation(String::new())
                 .unwrap()
                 .property
         )
@@ -51,12 +51,12 @@ pub fn main() {
     println!(
         "\"label\" annotation property: {}",
         SolidityBytes(
-            &spread_ontology::create_label_annotation(String::new())
+            &rlay_ontology::create_label_annotation(String::new())
                 .unwrap()
                 .property
         ),
     );
-    let label_annotation = spread_ontology::create_label_annotation("Organization".to_owned())
+    let label_annotation = rlay_ontology::create_label_annotation("Organization".to_owned())
         .unwrap()
         .to_cid()
         .unwrap();

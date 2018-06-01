@@ -530,7 +530,7 @@ dependencies = [
  "integer-encoding 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "multibase 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "multihash 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "multihash 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost-build 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost-derive 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",

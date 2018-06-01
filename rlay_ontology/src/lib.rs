@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 
 // Include the `items` module, which is generated from items.proto.
 pub mod ontology {
-    include!(concat!(env!("OUT_DIR"), "/spread.ontology.rs"));
+    include!(concat!(env!("OUT_DIR"), "/rlay.ontology.rs"));
 
     use multihash::encode;
     use multihash::Hash;
