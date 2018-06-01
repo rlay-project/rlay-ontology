@@ -1,0 +1,28 @@
+[workspace]
+members = [
+  "rlay_ontology",
+  "rlay_ontology_stdweb"
+]
+
+# [dependencies]
+# petgraph = "0.4.11"
+# itertools = "0.7.6"
+# log = { version = "0.4.1"}
+# prettytable-rs = { version = "0.6.7", default-features = false }
+# shrinkwraprs = "0.2.0"
+# num = "0.1.42"
+# serde = "1.0.27"
+# serde_derive = "1.0.27"
+# 
+[patch.crates-io]
+# required to work on wasm; https://github.com/rust-lang-deprecated/rustc-serialize/pull/190
+# rustc-serialize = { git = 'https://github.com/chrysn-pull-requests/rustc-serialize', branch = 'for-wasm' }
+# required to work on wasm
+# multihash = { git = "https://github.com/tomaka/rust-multihash.git", branch = "emscripten-hack" }
+# see https://github.com/ipld/rust-cid/pull/9
+cid = { git = 'https://github.com/hobofan/rust-cid', branch = 'feat/unknown' }
+
+# [features]
+# bin = []
+
+# bay_main = ["bin"]

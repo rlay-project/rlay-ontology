@@ -1,0 +1,72 @@
+# Javascript Node CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-javascript/ for more details
+#
+version: 2
+jobs:
+  build:
+    docker:
+      # specify the version you desire here
+      - image: circleci/node:8.10.0
+
+    # environment:
+      # CARGO_WEB_VERSION: xxx
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "Cargo.lock" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+      - restore_cache:
+          keys:
+          - cargo-dependencies-{{ checksum "Cargo.lock" }}
+      - restore_cache:
+          keys:
+          - cargo-binaries-{{ checksum "Makefile" }}
+
+      - run: npm install
+      - run:
+          name: Install rustup
+          command: curl https://sh.rustup.rs -sSf | sh /dev/stdin --default-toolchain $(cat rust-toolchain) -y --verbose
+      - run: echo 'export PATH=$HOME/.cargo/bin:$PWD/bin:$PATH' >> $BASH_ENV
+      - run:
+          name: Install different toolchains and targets
+          command: |
+            make toolchains
+      - run:
+          name: Install cargo-web, etc.
+          command: make cargo-binaries
+      - run:
+          name: Fetch dependencies (for cache)
+          command: cargo fetch
+
+      - save_cache:
+          paths:
+            - ~/.cargo/registry
+          key: cargo-dependencies-{{ checksum "Cargo.lock" }}
+      - save_cache:
+          paths:
+            - bin
+          key: cargo-binaries-{{ checksum "Makefile" }}
+
+      # run tests!
+      - run:
+          name: Test crate bay
+          command: cargo test
+      - run:
+          name: Test crate rlay_ontology
+          command: cd rlay_ontology && cargo test
+      - run:
+          name: Check if rlay_ontology_stdweb builds
+          command: cd rlay_ontology_stdweb && cargo web build --target wasm32-unknown-unknown
+
+      - run:
+          name: Clippy lint
+          command: make lint
+

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package spread.ontology;
+
+message Annotation {
+  bytes property = 1;
+  string value = 2; // TODO: change to accept both IRI or literal
+}
+
+message Class {
+  /// List of hashes of annotations
+  repeated bytes annotations = 1;
+  /// List of hashes of parent classes
+  repeated bytes sub_class_of_class = 2; // TODO: replace with proper sub_class_of field that takes arbitraty subClassExpressions
+}
+
+message Individual {
+  /// List of hashes of annotations
+  repeated bytes annotations = 1;
+  /// List of hashes of asserted classes
+  repeated bytes class_assertions = 2;
+  repeated bytes negative_class_assertions = 3;
+}

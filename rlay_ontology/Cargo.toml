@@ -1,0 +1,26 @@
+[package]
+name = "rlay_ontology"
+version = "0.1.0"
+authors = ["Maximilian Goisser <goisser94@gmail.com>"]
+
+[lib]
+name = "rlay_ontology"
+path = "src/lib.rs"
+
+[[example]]
+name = "example_hashes"
+path = "src/bin.rs"
+
+[dependencies]
+prost = "0.3.0"
+bytes = "0.4.6"
+prost-derive = "0.3.0"
+multihash = "0.7.0"
+cid = "0.2.3"
+itertools = "0.7.6"
+multibase = "0.6.0"
+failure = "0.1.1"
+integer-encoding = "1.0"
+
+[build-dependencies]
+prost-build = "0.3.0"
