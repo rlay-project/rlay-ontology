@@ -3,7 +3,7 @@ BINARY_DIR = bin
 CLIPPY_VERSION = 0.0.206
 CLIPPY_TOOLCHAIN = $(shell cat rust-toolchain-clippy)
 
-CARGO_WEB_VERSION = 0.6.8
+CARGO_WEB_VERSION = 0.6.13
 CARGO_WEB_TOOLCHAIN = $(shell cat rlay_ontology_stdweb/rust-toolchain)
 
 toolchain-clippy:
