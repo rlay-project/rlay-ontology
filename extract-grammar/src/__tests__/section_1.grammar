@@ -1,0 +1,22 @@
+Assertion :=
+    SameIndividual | DifferentIndividuals | ClassAssertion |
+    ObjectPropertyAssertion | NegativeObjectPropertyAssertion |
+    DataPropertyAssertion | NegativeDataPropertyAssertion
+
+sourceIndividual := Individual
+targetIndividual := Individual
+targetValue := Literal
+
+SameIndividual := 'SameIndividual' '(' axiomAnnotations Individual Individual { Individual } ')'
+
+DifferentIndividuals := 'DifferentIndividuals' '(' axiomAnnotations Individual Individual { Individual } ')'
+
+ClassAssertion := 'ClassAssertion' '(' axiomAnnotations ClassExpression Individual ')'
+
+ObjectPropertyAssertion := 'ObjectPropertyAssertion' '(' axiomAnnotations ObjectPropertyExpression sourceIndividual targetIndividual ')'
+
+NegativeObjectPropertyAssertion := 'NegativeObjectPropertyAssertion' '(' axiomAnnotations ObjectPropertyExpression sourceIndividual targetIndividual ')'
+
+DataPropertyAssertion := 'DataPropertyAssertion' '(' axiomAnnotations DataPropertyExpression sourceIndividual targetValue ')'
+
+NegativeDataPropertyAssertion := 'NegativeDataPropertyAssertion' '(' axiomAnnotations DataPropertyExpression sourceIndividual targetValue ')'

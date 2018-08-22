@@ -1,0 +1,1 @@
+ClassAxiom := SubClassOf | EquivalentClasses | DisjointClasses | DisjointUnion

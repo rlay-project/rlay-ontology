@@ -1,0 +1,4 @@
+Assertion :=
+    SameIndividual | DifferentIndividuals | ClassAssertion |
+    ObjectPropertyAssertion | NegativeObjectPropertyAssertion |
+    DataPropertyAssertion | NegativeDataPropertyAssertion

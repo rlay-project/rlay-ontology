@@ -103,3 +103,19 @@ message Individual {
   repeated bytes annotations = 1;
 }
 
+message AnnotationProperty {
+  repeated bytes annotations = 1;
+}
+
+message ClassAssertion {
+  repeated bytes annotations = 1;
+  optional bytes class = 2;
+  optional bytes subject = 3;
+}
+
+message NegativeClassAssertion {
+  repeated bytes annotations = 1;
+  optional bytes class = 2;
+  optional bytes subject = 3;
+}
+

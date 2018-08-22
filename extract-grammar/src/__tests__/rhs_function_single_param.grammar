@@ -1,0 +1,1 @@
+InverseObjectProperty := 'ObjectInverseOf' '(' ObjectProperty ')'

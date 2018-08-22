@@ -77,22 +77,30 @@ pub mod ontology {
     codec_code!(Annotation, 0xf1);
     codec_code!(Class, 0xf1);
     codec_code!(Individual, 0xf1);
+    codec_code!(ClassAssertion, 0xf1);
+    codec_code!(NegativeClassAssertion, 0xf1);
     // codec_code!(Annotation, 0xf0);
     // codec_code!(Class, 0xf1);
     // codec_code!(Individual, 0xf2);
     impl_to_cid!(Annotation);
     impl_to_cid!(Class);
     impl_to_cid!(Individual);
+    impl_to_cid!(ClassAssertion);
+    impl_to_cid!(NegativeClassAssertion);
     impl_canonicalize!(Annotation; annotations);
     impl_into_entity_kind!(Annotation, EntityKind::Annotation);
     impl_into_entity_kind!(Class, EntityKind::Class);
     impl_into_entity_kind!(Individual, EntityKind::Individual);
+    impl_into_entity_kind!(ClassAssertion, EntityKind::ClassAssertion);
+    impl_into_entity_kind!(NegativeClassAssertion, EntityKind::NegativeClassAssertion);
 
     #[derive(Debug, Clone, PartialEq)]
     pub enum EntityKind {
         Annotation(Annotation),
         Class(Class),
         Individual(Individual),
+        ClassAssertion(ClassAssertion),
+        NegativeClassAssertion(NegativeClassAssertion),
     }
 
     impl EntityKind {
@@ -101,6 +109,8 @@ pub mod ontology {
                 EntityKind::Annotation(ent) => ent.to_cid().unwrap().to_bytes(),
                 EntityKind::Class(ent) => ent.to_cid().unwrap().to_bytes(),
                 EntityKind::Individual(ent) => ent.to_cid().unwrap().to_bytes(),
+                EntityKind::ClassAssertion(ent) => ent.to_cid().unwrap().to_bytes(),
+                EntityKind::NegativeClassAssertion(ent) => ent.to_cid().unwrap().to_bytes(),
             }
         }
     }
