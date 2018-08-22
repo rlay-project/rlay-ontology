@@ -9,8 +9,6 @@ extern crate prost;
 extern crate prost_derive;
 
 use std::io::Cursor;
-use multihash::encode;
-use multihash::Hash;
 use cid::{Cid, Codec, Error as CidError, ToCid, Version};
 use integer_encoding::VarIntReader;
 use std::collections::BTreeMap;
@@ -32,43 +30,7 @@ pub mod ontology {
         const CODEC_CODE: u64;
     }
 
-    impl Annotation {
-        pub fn new(property: &[u8], value: String) -> Self {
-            Annotation {
-                property: property.to_owned(),
-                value,
-            }
-        }
-    }
-
-    impl AssociatedCodec for Annotation {
-        const CODEC_CODE: u64 = 0xf0; // TODO: placeholder value
-    }
-
-    impl Canonicalize for Class {
-        fn canonicalize(&mut self) {
-            self.annotations.sort();
-            self.sub_class_of_class.sort();
-        }
-    }
-
-    impl AssociatedCodec for Class {
-        const CODEC_CODE: u64 = 0xf1; // TODO: placeholder value
-    }
-
-    impl Canonicalize for Individual {
-        fn canonicalize(&mut self) {
-            self.annotations.sort();
-            self.class_assertions.sort();
-            self.negative_class_assertions.sort();
-        }
-    }
-
-    impl AssociatedCodec for Individual {
-        const CODEC_CODE: u64 = 0xf2; // TODO: placeholder value
-    }
-
-    macro_rules! toCidImpl {
+    macro_rules! impl_to_cid {
         ($v:path) => (
             impl ToCid for $v {
                 fn to_cid(&self) -> Result<Cid, CidError> {
@@ -83,12 +45,67 @@ pub mod ontology {
         ;
     }
 
-    toCidImpl!(Annotation);
-    toCidImpl!(Class);
-    toCidImpl!(Individual);
-}
+    macro_rules! codec_code {
+        ($v:path, $c:expr) => (
+            impl AssociatedCodec for $v {
+                const CODEC_CODE: u64 = $c;
+            }
+        );
+    }
 
-use ontology::Annotation;
+    macro_rules! impl_canonicalize {
+        ($v:path; $($field_name:ident),*) => (
+            impl Canonicalize for $v {
+                fn canonicalize(&mut self) {
+                    $(self.$field_name.sort());*
+                }
+            }
+        );
+    }
+
+    macro_rules! impl_into_entity_kind {
+        ($v:path, $wrapper:path) => (
+            impl Into<EntityKind> for $v {
+                fn into(self) -> EntityKind {
+                    $wrapper(self)
+                }
+            }
+        );
+    }
+
+    // TODO: generate all of these from ontology intermediate.json
+    codec_code!(Annotation, 0xf1);
+    codec_code!(Class, 0xf1);
+    codec_code!(Individual, 0xf1);
+    // codec_code!(Annotation, 0xf0);
+    // codec_code!(Class, 0xf1);
+    // codec_code!(Individual, 0xf2);
+    impl_to_cid!(Annotation);
+    impl_to_cid!(Class);
+    impl_to_cid!(Individual);
+    impl_canonicalize!(Annotation; annotations);
+    impl_into_entity_kind!(Annotation, EntityKind::Annotation);
+    impl_into_entity_kind!(Class, EntityKind::Class);
+    impl_into_entity_kind!(Individual, EntityKind::Individual);
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum EntityKind {
+        Annotation(Annotation),
+        Class(Class),
+        Individual(Individual),
+    }
+
+    impl EntityKind {
+        pub fn to_bytes(&self) -> Vec<u8> {
+            match &self {
+                EntityKind::Annotation(ent) => ent.to_cid().unwrap().to_bytes(),
+                EntityKind::Class(ent) => ent.to_cid().unwrap().to_bytes(),
+                EntityKind::Individual(ent) => ent.to_cid().unwrap().to_bytes(),
+            }
+        }
+    }
+
+}
 
 pub const RDFS_LABEL: &str = "http://www.w3.org/2000/01/rdf-schema#label";
 
@@ -110,15 +127,15 @@ impl From<prost::EncodeError> for HashError {
     }
 }
 
-pub fn create_annotation(iri: String, value: String) -> Result<Annotation, multihash::Error> {
-    let label_property = encode(Hash::SHA3256, &iri.as_bytes())?;
-    Ok(Annotation::new(&label_property, value))
-}
+// pub fn create_annotation(iri: String, value: String) -> Result<Annotation, multihash::Error> {
+// let label_property = encode(Hash::SHA3256, &iri.as_bytes())?;
+// Ok(Annotation::new(&label_property, value))
+// }
 
-pub fn create_label_annotation(value: String) -> Result<Annotation, multihash::Error> {
-    let label_property = encode(Hash::SHA3256, &RDFS_LABEL.as_bytes())?;
-    Ok(Annotation::new(&label_property, value))
-}
+// pub fn create_label_annotation(value: String) -> Result<Annotation, multihash::Error> {
+// let label_property = encode(Hash::SHA3256, &RDFS_LABEL.as_bytes())?;
+// Ok(Annotation::new(&label_property, value))
+// }
 
 pub trait ContentAddressableStorage<T> {
     type Error;
