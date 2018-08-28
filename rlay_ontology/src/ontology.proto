@@ -93,6 +93,16 @@ message DataExactCardinality {
   repeated bytes superClassExpression = 2;
 }
 
+message ObjectProperty {
+  repeated bytes annotations = 1;
+  repeated bytes superObjectPropertyExpression = 2;
+}
+
+message InverseObjectProperty {
+  repeated bytes annotations = 1;
+  repeated bytes superObjectPropertyExpression = 2;
+}
+
 message Annotation {
   repeated bytes annotations = 1;
   required bytes property = 2;
@@ -109,13 +119,27 @@ message AnnotationProperty {
 
 message ClassAssertion {
   repeated bytes annotations = 1;
-  optional bytes class = 2;
-  optional bytes subject = 3;
+  required bytes class = 2;
+  required bytes subject = 3;
 }
 
 message NegativeClassAssertion {
   repeated bytes annotations = 1;
-  optional bytes class = 2;
+  required bytes class = 2;
+  required bytes subject = 3;
+}
+
+message ObjectPropertyAssertion {
+  repeated bytes annotations = 1;
+  optional bytes property = 2;
   optional bytes subject = 3;
+  optional bytes target = 4;
+}
+
+message NegativeObjectPropertyAssertion {
+  repeated bytes annotations = 1;
+  optional bytes property = 2;
+  optional bytes subject = 3;
+  optional bytes target = 4;
 }
 

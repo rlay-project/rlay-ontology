@@ -75,6 +75,25 @@ module.exports = {
         ];
       },
     },
+    SubObjectPropertyOf: {
+      checkExpressionKind: expressionKind => {
+        return expressionKind === 'ObjectPropertyExpression';
+      },
+      functionParams: params => {
+        assert(params.length === 3);
+        return [
+          {
+            name: 'annotations',
+            kind: params[0],
+          },
+          // skip subClassExpression
+          {
+            name: 'superObjectPropertyExpression',
+            kind: params[2],
+          },
+        ];
+      },
+    },
   },
   restrictGrammar: {
     Axiom: definition => {

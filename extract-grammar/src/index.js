@@ -143,6 +143,9 @@ const buildGrammar = parsedGrammar => {
     grammar,
     'ClassExpression'
   );
+  const objectPropertyExpressionKinds = buildExpressionsForGroup(
+  grammar, 'ObjectPropertyExpression'
+  );
   // Though they are named AnnotationAxiom, they are more like expressions
   const annotationAxiomKinds = buildExpressionsForGroup(
     grammar,
@@ -181,10 +184,12 @@ const buildGrammar = parsedGrammar => {
       {
         name: 'subject',
         kind: 'IRI',
+        required: true,
       },
       {
         name: 'class',
         kind: 'IRI',
+        required: true,
       },
     ],
   });
@@ -198,9 +203,53 @@ const buildGrammar = parsedGrammar => {
       {
         name: 'subject',
         kind: 'IRI',
+        required: true,
       },
       {
         name: 'class',
+        kind: 'IRI',
+        required: true,
+      },
+    ],
+  });
+  otherKinds.push({
+    name: 'ObjectPropertyAssertion',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'subject',
+        kind: 'IRI',
+      },
+      {
+        name: 'property',
+        kind: 'IRI',
+      },
+      {
+        name: 'target',
+        kind: 'IRI',
+      },
+    ],
+  });
+  otherKinds.push({
+    name: 'NegativeObjectPropertyAssertion',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'subject',
+        kind: 'IRI',
+      },
+      {
+        name: 'property',
+        kind: 'IRI',
+      },
+      {
+        name: 'target',
         kind: 'IRI',
       },
     ],
@@ -208,6 +257,7 @@ const buildGrammar = parsedGrammar => {
 
   kinds = kinds.concat(
     classExpressionKinds,
+    objectPropertyExpressionKinds,
     // annotationAxiomKinds,
     otherKinds
   );
@@ -251,6 +301,9 @@ const transformKindField = (grammar, field) => {
 const hackyFieldKindTransformation = field => {
   if (field.kind === 'superClassExpression') {
     return 'ClassExpression[]';
+  }
+  if (field.kind === 'superObjectPropertyExpression') {
+    return 'ObjectProperyExpression[]';
   }
   return null;
 };

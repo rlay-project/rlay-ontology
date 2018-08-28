@@ -1,3 +1,5 @@
+const varint = require('varint');
+
 const libName = 'OntologyStorageLib';
 const indentLevel = i => Array(i * 4 + 1).join(' ');
 
@@ -47,11 +49,15 @@ const paramsToInstance = kind => {
   return line;
 };
 
-const addCidConstant = (protobuf, kind) => {
+const addCidConstant = (protobuf, kind, i) => {
+  const base = 0xc000;
+  const cidPrefixNumber = base + i;
+
+  const bytes = Buffer.from(varint.encode(cidPrefixNumber));
   // TODO: per-kind value
-  protobuf.file += `${indentLevel(1)}bytes5 constant cidPrefix${
+  protobuf.file += `${indentLevel(1)}bytes6 constant cidPrefix${
     kind.name
-  } = 0x01f1011b20;\n`;
+  } = 0x01${bytes.toString('hex')}1b20;\n`;
 };
 
 const addFunctionHashKind = (protobuf, kind) => {
@@ -256,13 +262,13 @@ const addOntologyStorageContract = (protobuf, grammar) => {
   protobuf.file += '\n';
 };
 
-const addKindStorageContract = (protobuf, kind) => {
+const addKindStorageContract = (protobuf, kind, i) => {
   const contractName = `${kind.name}Storage`;
 
   protobuf.file += `contract ${contractName} is I${contractName} {\n`;
   addStorageField(protobuf, kind);
   protobuf.file += '\n';
-  addCidConstant(protobuf, kind);
+  addCidConstant(protobuf, kind, i);
   protobuf.file += '\n';
   addStoredEvent(protobuf, kind);
   protobuf.file += '\n';
@@ -278,7 +284,7 @@ const addKindStorageContract = (protobuf, kind) => {
 };
 
 const addKindStorageContracts = (protobuf, grammar) => {
-  grammar.kinds.forEach(kind => addKindStorageContract(protobuf, kind));
+  grammar.kinds.forEach((kind, i) => addKindStorageContract(protobuf, kind, i));
 };
 
 const addKindStorageInterfaceContract = (protobuf, kind) => {

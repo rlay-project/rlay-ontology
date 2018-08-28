@@ -74,11 +74,11 @@ pub mod ontology {
     }
 
     // TODO: generate all of these from ontology intermediate.json
-    codec_code!(Annotation, 0xf1);
-    codec_code!(Class, 0xf1);
-    codec_code!(Individual, 0xf1);
-    codec_code!(ClassAssertion, 0xf1);
-    codec_code!(NegativeClassAssertion, 0xf1);
+    codec_code!(Annotation, 0xc014);
+    codec_code!(Class, 0xc000);
+    codec_code!(Individual, 0xc015);
+    codec_code!(ClassAssertion, 0xc017);
+    codec_code!(NegativeClassAssertion, 0xc018);
     // codec_code!(Annotation, 0xf0);
     // codec_code!(Class, 0xf1);
     // codec_code!(Individual, 0xf2);
@@ -94,27 +94,102 @@ pub mod ontology {
     impl_into_entity_kind!(ClassAssertion, EntityKind::ClassAssertion);
     impl_into_entity_kind!(NegativeClassAssertion, EntityKind::NegativeClassAssertion);
 
-    #[derive(Debug, Clone, PartialEq)]
-    pub enum EntityKind {
-        Annotation(Annotation),
-        Class(Class),
-        Individual(Individual),
-        ClassAssertion(ClassAssertion),
-        NegativeClassAssertion(NegativeClassAssertion),
-    }
+    pub use self::custom::*;
 
-    impl EntityKind {
-        pub fn to_bytes(&self) -> Vec<u8> {
-            match &self {
-                EntityKind::Annotation(ent) => ent.to_cid().unwrap().to_bytes(),
-                EntityKind::Class(ent) => ent.to_cid().unwrap().to_bytes(),
-                EntityKind::Individual(ent) => ent.to_cid().unwrap().to_bytes(),
-                EntityKind::ClassAssertion(ent) => ent.to_cid().unwrap().to_bytes(),
-                EntityKind::NegativeClassAssertion(ent) => ent.to_cid().unwrap().to_bytes(),
+    mod custom {
+        use super::*;
+
+        #[derive(Debug, Clone, PartialEq)]
+        pub enum EntityKind {
+            Annotation(Annotation),
+            Class(Class),
+            Individual(Individual),
+            ClassAssertion(ClassAssertion),
+            NegativeClassAssertion(NegativeClassAssertion),
+        }
+
+        impl EntityKind {
+            pub fn to_bytes(&self) -> Vec<u8> {
+                self.to_cid().unwrap().to_bytes()
+            }
+
+            pub fn get_subject(&self) -> Option<&Vec<u8>> {
+                match &self {
+                    EntityKind::ClassAssertion(ent) => Some(ent.get_subject()),
+                    EntityKind::NegativeClassAssertion(ent) => Some(ent.get_subject()),
+                    _ => None,
+                }
+            }
+
+            pub fn as_class_assertion(&self) -> Option<&ClassAssertion> {
+                match *self {
+                    EntityKind::ClassAssertion(ref val) => Some(&*val),
+                    _ => None,
+                }
+            }
+
+            pub fn as_negative_class_assertion(&self) -> Option<&NegativeClassAssertion> {
+                match *self {
+                    EntityKind::NegativeClassAssertion(ref val) => Some(&*val),
+                    _ => None,
+                }
+            }
+        }
+
+        impl ToCid for EntityKind {
+            fn to_cid(&self) -> Result<Cid, CidError> {
+                match &self {
+                    EntityKind::Annotation(ent) => ent.to_cid(),
+                    EntityKind::Class(ent) => ent.to_cid(),
+                    EntityKind::Individual(ent) => ent.to_cid(),
+                    EntityKind::ClassAssertion(ent) => ent.to_cid(),
+                    EntityKind::NegativeClassAssertion(ent) => ent.to_cid(),
+                }
+            }
+        }
+
+        pub trait GetAssertionComplement {
+            type Complement;
+
+            fn get_assertion_complement(&self) -> Self::Complement;
+        }
+
+        impl GetAssertionComplement for ClassAssertion {
+            type Complement = NegativeClassAssertion;
+
+            fn get_assertion_complement(&self) -> Self::Complement {
+                NegativeClassAssertion {
+                    annotations: vec![],
+                    subject: self.subject.clone(),
+                    class: self.class.clone(),
+                }
+            }
+        }
+
+        impl GetAssertionComplement for NegativeClassAssertion {
+            type Complement = ClassAssertion;
+
+            fn get_assertion_complement(&self) -> Self::Complement {
+                ClassAssertion {
+                    annotations: vec![],
+                    subject: self.subject.clone(),
+                    class: self.class.clone(),
+                }
+            }
+        }
+
+        impl ClassAssertion {
+            pub fn get_subject(&self) -> &Vec<u8> {
+                &self.subject
+            }
+        }
+
+        impl NegativeClassAssertion {
+            pub fn get_subject(&self) -> &Vec<u8> {
+                &self.subject
             }
         }
     }
-
 }
 
 pub const RDFS_LABEL: &str = "http://www.w3.org/2000/01/rdf-schema#label";
