@@ -7,6 +7,13 @@ extern crate multihash;
 extern crate prost;
 #[macro_use]
 extern crate prost_derive;
+extern crate rustc_hex;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+
+#[cfg(feature = "web3_compat")]
+extern crate web3;
 
 use std::io::Cursor;
 use cid::{Cid, Codec, Error as CidError, ToCid, Version};
@@ -15,12 +22,11 @@ use std::collections::BTreeMap;
 
 // Include the `items` module, which is generated from items.proto.
 pub mod ontology {
-    include!(concat!(env!("OUT_DIR"), "/rlay.ontology.rs"));
-
     use multihash::encode;
     use multihash::Hash;
     use prost::Message;
     use cid::{Cid, Codec, Error as CidError, ToCid, Version};
+    use rustc_hex::ToHex;
 
     pub trait Canonicalize {
         fn canonicalize(&mut self);
@@ -30,123 +36,305 @@ pub mod ontology {
         const CODEC_CODE: u64;
     }
 
-    macro_rules! impl_to_cid {
-        ($v:path) => (
-            impl ToCid for $v {
-                fn to_cid(&self) -> Result<Cid, CidError> {
-                    let mut encoded = Vec::<u8>::new();
-                    self.encode(&mut encoded).map_err(|_| CidError::ParsingError)?;
-                    let hashed = encode(Hash::Keccak256, &encoded).map_err(|_| CidError::ParsingError)?;
-
-                    let cid = Cid::new(Codec::Unknown(<Self as AssociatedCodec>::CODEC_CODE), Version::V1, &hashed);
-                    Ok(cid)
-                }
-            })
-        ;
+    struct HexString<'a> {
+        pub inner: &'a [u8],
     }
 
-    macro_rules! codec_code {
-        ($v:path, $c:expr) => (
-            impl AssociatedCodec for $v {
-                const CODEC_CODE: u64 = $c;
+    impl<'a> HexString<'a> {
+        pub fn wrap(bytes: &'a [u8]) -> Self {
+            HexString { inner: bytes }
+        }
+
+        pub fn wrap_option(bytes: Option<&'a Vec<u8>>) -> Option<Self> {
+            match bytes {
+                Some(bytes) => Some(HexString { inner: bytes }),
+                None => None,
             }
-        );
+        }
     }
 
-    macro_rules! impl_canonicalize {
-        ($v:path; $($field_name:ident),*) => (
-            impl Canonicalize for $v {
-                fn canonicalize(&mut self) {
-                    $(self.$field_name.sort());*
-                }
-            }
-        );
+    impl<'a> ::serde::Serialize for HexString<'a> {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: ::serde::Serializer,
+        {
+            let hex: String = self.inner.to_hex();
+            Ok(try!(serializer.serialize_str(&format!("0x{}", &hex))))
+        }
     }
 
-    macro_rules! impl_into_entity_kind {
-        ($v:path, $wrapper:path) => (
-            impl Into<EntityKind> for $v {
-                fn into(self) -> EntityKind {
-                    $wrapper(self)
-                }
-            }
-        );
-    }
+    include!(concat!(env!("OUT_DIR"), "/rlay.ontology.rs"));
+
+    include!("./rlay.ontology.macros.rs");
+    include!(concat!(env!("OUT_DIR"), "/rlay.ontology.macros_applied.rs"));
 
     // TODO: generate all of these from ontology intermediate.json
-    codec_code!(Annotation, 0xc014);
-    codec_code!(Class, 0xc000);
-    codec_code!(Individual, 0xc015);
-    codec_code!(ClassAssertion, 0xc017);
-    codec_code!(NegativeClassAssertion, 0xc018);
-    // codec_code!(Annotation, 0xf0);
-    // codec_code!(Class, 0xf1);
-    // codec_code!(Individual, 0xf2);
-    impl_to_cid!(Annotation);
-    impl_to_cid!(Class);
-    impl_to_cid!(Individual);
-    impl_to_cid!(ClassAssertion);
-    impl_to_cid!(NegativeClassAssertion);
     impl_canonicalize!(Annotation; annotations);
-    impl_into_entity_kind!(Annotation, EntityKind::Annotation);
-    impl_into_entity_kind!(Class, EntityKind::Class);
-    impl_into_entity_kind!(Individual, EntityKind::Individual);
-    impl_into_entity_kind!(ClassAssertion, EntityKind::ClassAssertion);
-    impl_into_entity_kind!(NegativeClassAssertion, EntityKind::NegativeClassAssertion);
+
+    impl EntityKind {
+        pub fn from_event_name(event_name: &str) -> Result<Self, ()> {
+            let name = event_name.replace("Stored", "");
+
+            Self::from_name(&name)
+        }
+
+        pub fn retrieve_fn_name(&self) -> String {
+            format!("retrieve{}", Into::<&str>::into(self.to_owned()))
+        }
+    }
+
+    impl Entity {
+        pub fn to_bytes(&self) -> Vec<u8> {
+            self.to_cid().unwrap().to_bytes()
+        }
+
+        pub fn get_subject(&self) -> Option<&Vec<u8>> {
+            match &self {
+                Entity::ClassAssertion(ent) => Some(ent.get_subject()),
+                Entity::NegativeClassAssertion(ent) => Some(ent.get_subject()),
+                _ => None,
+            }
+        }
+
+        pub fn as_class_assertion(&self) -> Option<&ClassAssertion> {
+            match *self {
+                Entity::ClassAssertion(ref val) => Some(&*val),
+                _ => None,
+            }
+        }
+
+        pub fn as_negative_class_assertion(&self) -> Option<&NegativeClassAssertion> {
+            match *self {
+                Entity::NegativeClassAssertion(ref val) => Some(&*val),
+                _ => None,
+            }
+        }
+    }
 
     pub use self::custom::*;
+    #[cfg(feature = "web3_compat")]
+    pub use self::web3::*;
+
+    #[cfg(feature = "web3_compat")]
+    mod web3 {
+        use super::*;
+
+        use web3::types::U256;
+
+        /// Decode a single ethabi param of type bytes
+        fn decode_bytes(bytes: &[u8]) -> Vec<u8> {
+            let length = U256::from_big_endian(&bytes[0..32]);
+            bytes[((32) as usize)..((length).as_u64() as usize + 32)].to_owned()
+        }
+
+        /// Decode a single ethabi param of type bytes[]
+        fn decode_bytes_array(bytes: &[u8]) -> Vec<Vec<u8>> {
+            let num_elements = U256::from_big_endian(&bytes[0..32]);
+
+            let element_offsets: Vec<U256> = (0..num_elements.as_u64())
+                .map(|element_i| {
+                    let element_data_offset = U256::from_big_endian(
+                        // additional offset of 1 to account for leading word that holds the number of elements
+                        &bytes[(32 * (element_i + 1) as usize)..(32 * (element_i + 2) as usize)],
+                    );
+                    // + 32 because of leading word
+                    element_data_offset + Into::<U256>::into(32)
+                })
+                .collect();
+
+            element_offsets
+                .into_iter()
+                .map(|element_start_offset| {
+                    decode_bytes(&bytes[(element_start_offset.as_u64() as usize)..bytes.len()])
+                })
+                .collect()
+        }
+
+        fn to_option_bytes(bytes: Vec<u8>) -> Option<Vec<u8>> {
+            match bytes.len() {
+                0 => None,
+                _ => Some(bytes),
+            }
+        }
+
+        pub trait FromABIV2Response {
+            fn from_abiv2(bytes: &[u8]) -> Self;
+        }
+
+        pub trait FromABIV2ResponseHinted {
+            fn from_abiv2(bytes: &[u8], kind: &EntityKind) -> Self;
+        }
+
+        macro_rules! decode_offset {
+            ($bytes_var:ident, $offset_var:ident, $start:expr, $end:expr) => (
+                let $offset_var = U256::from_big_endian(&$bytes_var[$start..$end]);
+            );
+        }
+
+        macro_rules! decode_param {
+            (bytes_array; $bytes_var:ident, $param_var:ident, $start:expr, $end:expr) => (
+                let $param_var = decode_bytes_array(
+                    &$bytes_var[($start.as_u64() as usize)..($end.as_u64() as usize)],
+                );
+            );
+            (bytes_array; $bytes_var:ident, $param_var:ident, $start:expr) => (
+                let $param_var = decode_bytes_array(
+                    &$bytes_var[($start.as_u64() as usize)..$bytes_var.len()],
+                );
+            );
+            (bytes; $bytes_var:ident, $param_var:ident, $start:expr, $end:expr) => (
+                let $param_var = decode_bytes(
+                    &$bytes_var[($start.as_u64() as usize)..($end.as_u64() as usize)],
+                );
+            );
+            (bytes; $bytes_var:ident, $param_var:ident, $start:expr) => (
+                let $param_var = decode_bytes(
+                    &$bytes_var[($start.as_u64() as usize)..$bytes_var.len()],
+                );
+            );
+        }
+
+        include!(concat!(env!("OUT_DIR"), "/rlay.ontology.web3_applied.rs"));
+        // impl FromABIV2Response for Class {
+        // fn from_abiv2(bytes: &[u8]) -> Self {
+        // decode_offset!(bytes, annotations_offset, 0, 32);
+        // decode_offset!(bytes, super_class_expression_offset, 32, 64);
+
+        // decode_param!(
+        // bytes_array; bytes,
+        // annotations,
+        // annotations_offset,
+        // super_class_expression_offset
+        // );
+        // decode_param!(
+        // bytes_array; bytes,
+        // super_class_expression,
+        // super_class_expression_offset
+        // );
+
+        // Self {
+        // annotations,
+        // super_class_expression,
+        // }
+        // }
+        // }
+
+        // impl FromABIV2Response for Individual {
+        // fn from_abiv2(bytes: &[u8]) -> Self {
+        // decode_offset!(bytes, annotations_offset, 0, 32);
+
+        // decode_param!(bytes_array; bytes, annotations, annotations_offset);
+
+        // Self { annotations }
+        // }
+        // }
+
+        // impl FromABIV2Response for Annotation {
+        // fn from_abiv2(bytes: &[u8]) -> Self {
+        // decode_offset!(bytes, annotations_offset, 0, 32);
+        // decode_offset!(bytes, property_offset, 32, 64);
+        // decode_offset!(bytes, value_offset, 64, 96);
+
+        // decode_param!(
+        // bytes_array;
+        // bytes,
+        // annotations,
+        // annotations_offset,
+        // property_offset
+        // );
+        // decode_param!(
+        // bytes;
+        // bytes,
+        // property,
+        // property_offset,
+        // value_offset
+        // );
+        // decode_param!(
+        // bytes; bytes,
+        // value,
+        // value_offset
+        // );
+
+        // Self {
+        // annotations,
+        // property,
+        // value,
+        // }
+        // }
+        // }
+
+        // impl FromABIV2Response for ClassAssertion {
+        // fn from_abiv2(bytes: &[u8]) -> Self {
+        // decode_offset!(bytes, annotations_offset, 0, 32);
+        // decode_offset!(bytes, class_offset, 32, 64);
+        // decode_offset!(bytes, subject_offset, 64, 96);
+
+        // decode_param!(
+        // bytes_array;
+        // bytes,
+        // annotations,
+        // annotations_offset,
+        // class_offset
+        // );
+        // decode_param!(
+        // bytes;
+        // bytes,
+        // class,
+        // class_offset,
+        // subject_offset
+        // );
+        // decode_param!(
+        // bytes; bytes,
+        // subject,
+        // subject_offset
+        // );
+
+        // Self {
+        // annotations,
+        // class,
+        // subject,
+        // }
+        // }
+        // }
+
+        // impl FromABIV2Response for NegativeClassAssertion {
+        // fn from_abiv2(bytes: &[u8]) -> Self {
+        // decode_offset!(bytes, annotations_offset, 0, 32);
+        // decode_offset!(bytes, class_offset, 32, 64);
+        // decode_offset!(bytes, subject_offset, 64, 96);
+
+        // decode_param!(
+        // bytes_array;
+        // bytes,
+        // annotations,
+        // annotations_offset,
+        // class_offset
+        // );
+        // decode_param!(
+        // bytes;
+        // bytes,
+        // class,
+        // class_offset,
+        // subject_offset
+        // );
+        // decode_param!(
+        // bytes; bytes,
+        // subject,
+        // subject_offset
+        // );
+
+        // Self {
+        // annotations,
+        // class,
+        // subject,
+        // }
+        // }
+        // }
+
+    }
 
     mod custom {
         use super::*;
-
-        #[derive(Debug, Clone, PartialEq)]
-        pub enum EntityKind {
-            Annotation(Annotation),
-            Class(Class),
-            Individual(Individual),
-            ClassAssertion(ClassAssertion),
-            NegativeClassAssertion(NegativeClassAssertion),
-        }
-
-        impl EntityKind {
-            pub fn to_bytes(&self) -> Vec<u8> {
-                self.to_cid().unwrap().to_bytes()
-            }
-
-            pub fn get_subject(&self) -> Option<&Vec<u8>> {
-                match &self {
-                    EntityKind::ClassAssertion(ent) => Some(ent.get_subject()),
-                    EntityKind::NegativeClassAssertion(ent) => Some(ent.get_subject()),
-                    _ => None,
-                }
-            }
-
-            pub fn as_class_assertion(&self) -> Option<&ClassAssertion> {
-                match *self {
-                    EntityKind::ClassAssertion(ref val) => Some(&*val),
-                    _ => None,
-                }
-            }
-
-            pub fn as_negative_class_assertion(&self) -> Option<&NegativeClassAssertion> {
-                match *self {
-                    EntityKind::NegativeClassAssertion(ref val) => Some(&*val),
-                    _ => None,
-                }
-            }
-        }
-
-        impl ToCid for EntityKind {
-            fn to_cid(&self) -> Result<Cid, CidError> {
-                match &self {
-                    EntityKind::Annotation(ent) => ent.to_cid(),
-                    EntityKind::Class(ent) => ent.to_cid(),
-                    EntityKind::Individual(ent) => ent.to_cid(),
-                    EntityKind::ClassAssertion(ent) => ent.to_cid(),
-                    EntityKind::NegativeClassAssertion(ent) => ent.to_cid(),
-                }
-            }
-        }
 
         pub trait GetAssertionComplement {
             type Complement;
@@ -245,25 +433,30 @@ impl<T: ToCid> ContentAddressableStorage<T> for BTreeMap<String, T> {
 }
 
 pub trait ToCidUnknown {
-    fn to_cid_unknown(&self, permitted: u64) -> Result<Cid, CidError>;
+    fn to_cid_unknown(&self, permitted: Option<u64>) -> Result<Cid, CidError>;
 }
 
 impl ToCidUnknown for String {
-    fn to_cid_unknown(&self, permitted: u64) -> Result<Cid, CidError> {
+    fn to_cid_unknown(&self, permitted: Option<u64>) -> Result<Cid, CidError> {
         let bytes = multibase::decode(self).unwrap().1;
         bytes.to_cid_unknown(permitted)
     }
 }
 
 impl ToCidUnknown for [u8] {
-    fn to_cid_unknown(&self, permitted: u64) -> Result<Cid, CidError> {
+    fn to_cid_unknown(&self, permitted: Option<u64>) -> Result<Cid, CidError> {
         let mut cur = Cursor::new(self);
         let raw_version = cur.read_varint()?;
         let raw_codec = cur.read_varint()?;
 
         let version = Version::from(raw_version)?;
-        if raw_codec != permitted {
-            return Err(CidError::UnknownCodec);
+        match permitted {
+            Some(permitted) => {
+                if raw_codec != permitted {
+                    return Err(CidError::UnknownCodec);
+                }
+            }
+            None => {}
         }
         let codec = Codec::Unknown(raw_codec);
         let hash = &self[cur.position() as usize..];

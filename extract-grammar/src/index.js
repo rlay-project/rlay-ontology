@@ -1,4 +1,5 @@
 const fs = require('fs');
+const varint = require('varint');
 
 const parsed = require('../build/grammar.json').parsed;
 const paramsConfig = require('./params.js');
@@ -109,14 +110,15 @@ const restrictGrammar = parsedGammar => {
 const buildExpressionsForGroup = (grammar, groupName) => {
   const groupExpressionKinds = [];
   const expressionsInGroup = grammar.find(n => n.lhs === groupName);
-  expressionsInGroup.rhs.forEach(expressionIdent => {
+
+  const rhs = Array.isArray(expressionsInGroup.rhs) ? expressionsInGroup.rhs : [expressionsInGroup.rhs];
+  rhs.forEach(expressionIdent => {
     const expression = grammar.find(n => n.lhs === expressionIdent);
     const kind = buildExpression(expression);
     kind.expressionKind = groupName;
 
     groupExpressionKinds.push(kind);
   });
-  console.log(groupName, groupExpressionKinds);
 
   const axioms = grammar.find(n => n.lhs === 'Axiom');
   groupExpressionKinds.forEach(kind => {
@@ -129,7 +131,6 @@ const buildExpressionsForGroup = (grammar, groupName) => {
       });
     });
   });
-  console.log('2', groupName, groupExpressionKinds);
 
   return groupExpressionKinds;
 };
@@ -145,6 +146,9 @@ const buildGrammar = parsedGrammar => {
   );
   const objectPropertyExpressionKinds = buildExpressionsForGroup(
   grammar, 'ObjectPropertyExpression'
+  );
+  const dataPropertyExpressionKinds = buildExpressionsForGroup(
+  grammar, 'DataPropertyExpression'
   );
   // Though they are named AnnotationAxiom, they are more like expressions
   const annotationAxiomKinds = buildExpressionsForGroup(
@@ -254,10 +258,53 @@ const buildGrammar = parsedGrammar => {
       },
     ],
   });
+  otherKinds.push({
+    name: 'DataPropertyAssertion',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'subject',
+        kind: 'IRI',
+      },
+      {
+        name: 'property',
+        kind: 'IRI',
+      },
+      {
+        name: 'target',
+        kind: 'IRI',
+      },
+    ],
+  });
+  otherKinds.push({
+    name: 'NegativeDataPropertyAssertion',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'subject',
+        kind: 'IRI',
+      },
+      {
+        name: 'property',
+        kind: 'IRI',
+      },
+      {
+        name: 'target',
+        kind: 'IRI',
+      },
+    ],
+  });
 
   kinds = kinds.concat(
     classExpressionKinds,
     objectPropertyExpressionKinds,
+    dataPropertyExpressionKinds,
     // annotationAxiomKinds,
     otherKinds
   );
@@ -267,10 +314,28 @@ const buildGrammar = parsedGrammar => {
     kind.fields.forEach(field => transformKindField(grammar, field));
   });
 
+  kinds = kinds.map((kind, i) => Object.assign({}, kind, {
+    cidPrefix: calculateCidPrefix(i),
+    cidPrefixHex: calculateCidPrefixHex(i),
+  }));
+
   return {
     kinds,
   };
 };
+
+const calculateCidPrefix = (i) => {
+  const base = 0xc000;
+  const cidPrefixNumber = base + i;
+
+  return cidPrefixNumber;
+}
+
+const calculateCidPrefixHex = (i) => {
+  const cidPrefixNumber = calculateCidPrefix(i);
+  const bytes = Buffer.from(varint.encode(cidPrefixNumber));
+  return bytes.toString('hex');
+}
 
 const transformKindField = (grammar, field) => {
   const hackyFieldKind = hackyFieldKindTransformation(field);
@@ -296,6 +361,11 @@ const transformKindField = (grammar, field) => {
   field.kind = mapper(fieldExpression.rhs);
 };
 
+// TODO: unify field names that have same name and same kind
+const uniqFields = (fields) => {
+
+}
+
 // TODO: move to params.js
 // Transforms grammar identifiers of kind fields to other grammar identifiers (ending with "[]" if they are arrays)
 const hackyFieldKindTransformation = field => {
@@ -304,6 +374,9 @@ const hackyFieldKindTransformation = field => {
   }
   if (field.kind === 'superObjectPropertyExpression') {
     return 'ObjectProperyExpression[]';
+  }
+  if (field.kind === 'superDataPropertyExpression') {
+    return 'DataProperyExpression[]';
   }
   return null;
 };

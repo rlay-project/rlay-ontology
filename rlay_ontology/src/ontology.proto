@@ -103,6 +103,11 @@ message InverseObjectProperty {
   repeated bytes superObjectPropertyExpression = 2;
 }
 
+message DataProperty {
+  repeated bytes annotations = 1;
+  repeated bytes superDataPropertyExpression = 2;
+}
+
 message Annotation {
   repeated bytes annotations = 1;
   required bytes property = 2;
@@ -137,6 +142,20 @@ message ObjectPropertyAssertion {
 }
 
 message NegativeObjectPropertyAssertion {
+  repeated bytes annotations = 1;
+  optional bytes property = 2;
+  optional bytes subject = 3;
+  optional bytes target = 4;
+}
+
+message DataPropertyAssertion {
+  repeated bytes annotations = 1;
+  optional bytes property = 2;
+  optional bytes subject = 3;
+  optional bytes target = 4;
+}
+
+message NegativeDataPropertyAssertion {
   repeated bytes annotations = 1;
   optional bytes property = 2;
   optional bytes subject = 3;

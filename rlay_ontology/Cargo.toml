@@ -21,6 +21,18 @@ itertools = "0.7.6"
 multibase = "0.6.0"
 failure = "0.1.1"
 integer-encoding = "1.0"
+serde = "1.0.66"
+serde_derive = "1.0.66"
+rustc-hex = "2.0.1"
+web3 = { version = "0.4.0", optional = true }
 
 [build-dependencies]
 prost-build = "0.3.0"
+serde = "1.0.66"
+serde_derive = "1.0.66"
+serde_json = "1.0.27"
+heck = "0.3.0"
+
+[features]
+default = []
+web3_compat = ["web3"]

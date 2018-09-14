@@ -75,6 +75,24 @@ module.exports = {
         ];
       },
     },
+    // DisjointClasses: {
+      // checkExpressionKind: expressionKind => {
+        // return expressionKind === 'ClassExpression';
+      // },
+      // functionParams: params => {
+        // assert(params.length === 4);
+        // return [
+          // {
+            // name: 'annotations',
+            // kind: params[0],
+          // },
+          // {
+            // name: 'disjointClasses',
+            // kind: `${params[1]}[]`,
+          // },
+        // ];
+      // },
+    // },
     SubObjectPropertyOf: {
       checkExpressionKind: expressionKind => {
         return expressionKind === 'ObjectPropertyExpression';
@@ -86,7 +104,7 @@ module.exports = {
             name: 'annotations',
             kind: params[0],
           },
-          // skip subClassExpression
+          // skip subObjectPropertyExpression
           {
             name: 'superObjectPropertyExpression',
             kind: params[2],
@@ -94,8 +112,30 @@ module.exports = {
         ];
       },
     },
+    SubDataPropertyOf: {
+      checkExpressionKind: expressionKind => {
+        return expressionKind === 'DataPropertyExpression';
+      },
+      functionParams: params => {
+        assert(params.length === 3);
+        return [
+          {
+            name: 'annotations',
+            kind: params[0],
+          },
+          // skip subDataPropertyExpression
+          {
+            name: 'superDataPropertyExpression',
+            kind: params[2],
+          },
+        ];
+      },
+    },
   },
   restrictGrammar: {
+    removedDeclarations: [
+      'EquivalentClasses',
+    ],
     Axiom: definition => {
       definition.rhs = definition.rhs.filter(n => n !== 'Declaration');
       // TODO: not parsable from grammar yet or can't be processed
