@@ -260,13 +260,39 @@ mod main {
                     match kind {{
         "
         ).unwrap();
-        for name in kind_names {
+        for name in kind_names.iter() {
             write!(
                 out_file,
                 "
                     EntityKind::{0} => {{
                         Entity::{0}(FromABIV2Response::from_abiv2(bytes))
                     }}
+                ",
+                name
+            ).unwrap();
+        }
+        write!(
+            out_file,
+            "
+                    }}
+                }}
+            }}
+        "
+        ).unwrap();
+
+        write!(
+            out_file,
+            "
+            impl Entity {{
+                pub fn kind(&self) -> EntityKind {{
+                    match &self {{
+        "
+        ).unwrap();
+        for name in kind_names.iter() {
+            write!(
+                out_file,
+                "
+                    Entity::{0}(_) => EntityKind::{0},
                 ",
                 name
             ).unwrap();
