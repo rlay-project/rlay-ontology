@@ -107,6 +107,7 @@ mod main {
                         #[derive(Serialize)]
                         #[allow(non_snake_case)]
                         struct SerializeHelper<'a> {{
+                            pub cid: Option<HexString<'a>>,
             ",
             kind_name
         ).unwrap();
@@ -126,7 +127,9 @@ mod main {
             "
                 }}
 
+                let cid_option = self.to_cid().ok().map(|n| n.to_bytes());
                 let ext = SerializeHelper {{
+                    cid: HexString::wrap_option(cid_option.as_ref()),
             "
         ).unwrap();
         for field in fields.iter() {
