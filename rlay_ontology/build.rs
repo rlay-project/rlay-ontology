@@ -75,6 +75,8 @@ mod main {
             write!(out_file, "impl_to_cid!({});\n", kind_name).unwrap();
             // impl ::serde::Serialize
             write_impl_serialize(&mut out_file, kind_name, &fields);
+            // impl ::serde::Deserialize
+            write_impl_deserialize(&mut out_file, kind_name, &fields);
 
             write!(
                 out_file,
@@ -170,11 +172,196 @@ mod main {
         ).unwrap();
     }
 
+    fn write_impl_deserialize(out_file: &mut File, kind_name: &str, fields: &[Field]) {
+        write!(
+            out_file,
+            "
+                impl<'de> Deserialize<'de> for {0} {{
+                    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                        where D: Deserializer<'de>,
+                    {{
+                        struct ThisEntityVisitor;
+            ",
+            kind_name
+        ).unwrap();
+
+        let field_names: Vec<String> = fields.iter().map(|n| n.name.clone()).collect();
+        write!(
+            out_file,
+            "const FIELDS: &'static [&'static str] = &{:?};",
+            field_names
+        ).unwrap();
+
+        write!(
+            out_file,
+            "
+                impl<'de> Visitor<'de> for ThisEntityVisitor {{
+                    type Value = {0};
+
+                    fn expecting(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {{
+                        formatter.write_str(\"struct {0}\")
+                    }}
+
+                    fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
+                        where V: MapAccess<'de>,
+                    {{
+            ",
+            kind_name
+        ).unwrap();
+
+        for field in fields.iter() {
+            if field.is_array_kind() {
+                write!(
+                    out_file,
+                    "
+                        let mut {0}: Option<Vec<String>> = None;
+                    ",
+                    field.name.to_snake_case()
+                ).unwrap();
+            } else {
+                write!(
+                    out_file,
+                    "
+                        let mut {0}: Option<String> = None;
+                    ",
+                    field.name.to_snake_case()
+                ).unwrap();
+            }
+        }
+
+        write!(
+            out_file,
+            "
+                loop {{
+                    let key = map.next_key::<String>()?;
+                    match key {{
+            "
+        ).unwrap();
+
+        for field in fields.iter() {
+            write!(
+                out_file,
+                "
+                    Some(ref key) if key == \"{0}\" => {{
+                        if {1}.is_some() {{
+                            return Err(de::Error::duplicate_field(\"{0}\"));
+                        }}
+                        {1} = Some(map.next_value()?);
+                    }}
+                ",
+                field.name,
+                field.name.to_snake_case()
+            ).unwrap();
+        }
+
+        write!(
+            out_file,
+            "
+                        Some(ref unknown) => {{
+                            return Err(de::Error::unknown_field(unknown, FIELDS))
+                        }}
+                        None => break,
+                    }}
+                }}
+            "
+        ).unwrap();
+
+        for field in fields.iter() {
+            write!(
+                out_file,
+                "
+                    let {0} = {0}
+                ",
+                field.name.to_snake_case()
+            ).unwrap();
+            if field.is_array_kind() {
+                write!(
+                    out_file,
+                    "
+                            .unwrap_or(Vec::new())
+                            .into_iter()
+                            .map(|n| {{
+                                n[2..].from_hex().map_err(|_| {{
+                                    de::Error::invalid_value(
+                                        de::Unexpected::Other(\"invalid hexstring\"),
+                                        &\"hexstring\",
+                                    )
+                                }})
+                            }})
+                            .collect::<Result<_, _>>()?;
+                    ",
+                ).unwrap();
+            } else {
+                write!(
+                    out_file,
+                    "
+                            .map(|n| {{
+                                n[2..].from_hex().map_err(|_| {{
+                                    de::Error::invalid_value(
+                                        de::Unexpected::Other(\"invalid hexstring\"),
+                                        &\"hexstring\",
+                                    )
+                                }})
+                            }}).map_or(Ok(None), |v| v.map(Some))?;
+                    ",
+                ).unwrap();
+                if field.required {
+                    write!(
+                        out_file,
+                        "
+                            let {0} = {0}.ok_or(de::Error::missing_field(\"{1}\"))?;
+                        ",
+                        field.name.to_snake_case(),
+                        field.name,
+                    ).unwrap();
+                }
+            }
+        }
+
+        write!(
+            out_file,
+            "
+                Ok({0} {{
+            ",
+            kind_name
+        ).unwrap();
+
+        // Fields in constructor
+        for field in fields.iter() {
+            write!(
+                out_file,
+                "
+                    {0},
+                ",
+                field.name.to_snake_case()
+            ).unwrap();
+        }
+
+        write!(
+            out_file,
+            "
+                        }})
+                    }}
+                }}
+            ",
+        ).unwrap();
+
+        write!(
+            out_file,
+            "
+                        deserializer.deserialize_struct(\"{0}\", FIELDS, ThisEntityVisitor)
+                    }}
+                }}
+            ",
+            kind_name
+        ).unwrap();
+    }
+
     fn write_entity_kind(out_file: &mut File, kind_names: Vec<String>) {
         write!(
             out_file,
             "
-            #[derive(Debug, Clone, PartialEq, Serialize)]
+            #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
             pub enum EntityKind {{
         "
         ).unwrap();
@@ -224,7 +411,7 @@ mod main {
         write!(
             out_file,
             "
-            #[derive(Debug, Clone, PartialEq, Serialize)]
+            #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
             #[serde(tag = \"type\")]
             pub enum Entity {{
         "

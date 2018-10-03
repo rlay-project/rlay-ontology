@@ -26,7 +26,9 @@ pub mod ontology {
     use multihash::Hash;
     use prost::Message;
     use cid::{Cid, Codec, Error as CidError, ToCid, Version};
-    use rustc_hex::ToHex;
+    use rustc_hex::{FromHex, ToHex};
+
+    use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
 
     pub trait Canonicalize {
         fn canonicalize(&mut self);
@@ -195,142 +197,6 @@ pub mod ontology {
         }
 
         include!(concat!(env!("OUT_DIR"), "/rlay.ontology.web3_applied.rs"));
-        // impl FromABIV2Response for Class {
-        // fn from_abiv2(bytes: &[u8]) -> Self {
-        // decode_offset!(bytes, annotations_offset, 0, 32);
-        // decode_offset!(bytes, super_class_expression_offset, 32, 64);
-
-        // decode_param!(
-        // bytes_array; bytes,
-        // annotations,
-        // annotations_offset,
-        // super_class_expression_offset
-        // );
-        // decode_param!(
-        // bytes_array; bytes,
-        // super_class_expression,
-        // super_class_expression_offset
-        // );
-
-        // Self {
-        // annotations,
-        // super_class_expression,
-        // }
-        // }
-        // }
-
-        // impl FromABIV2Response for Individual {
-        // fn from_abiv2(bytes: &[u8]) -> Self {
-        // decode_offset!(bytes, annotations_offset, 0, 32);
-
-        // decode_param!(bytes_array; bytes, annotations, annotations_offset);
-
-        // Self { annotations }
-        // }
-        // }
-
-        // impl FromABIV2Response for Annotation {
-        // fn from_abiv2(bytes: &[u8]) -> Self {
-        // decode_offset!(bytes, annotations_offset, 0, 32);
-        // decode_offset!(bytes, property_offset, 32, 64);
-        // decode_offset!(bytes, value_offset, 64, 96);
-
-        // decode_param!(
-        // bytes_array;
-        // bytes,
-        // annotations,
-        // annotations_offset,
-        // property_offset
-        // );
-        // decode_param!(
-        // bytes;
-        // bytes,
-        // property,
-        // property_offset,
-        // value_offset
-        // );
-        // decode_param!(
-        // bytes; bytes,
-        // value,
-        // value_offset
-        // );
-
-        // Self {
-        // annotations,
-        // property,
-        // value,
-        // }
-        // }
-        // }
-
-        // impl FromABIV2Response for ClassAssertion {
-        // fn from_abiv2(bytes: &[u8]) -> Self {
-        // decode_offset!(bytes, annotations_offset, 0, 32);
-        // decode_offset!(bytes, class_offset, 32, 64);
-        // decode_offset!(bytes, subject_offset, 64, 96);
-
-        // decode_param!(
-        // bytes_array;
-        // bytes,
-        // annotations,
-        // annotations_offset,
-        // class_offset
-        // );
-        // decode_param!(
-        // bytes;
-        // bytes,
-        // class,
-        // class_offset,
-        // subject_offset
-        // );
-        // decode_param!(
-        // bytes; bytes,
-        // subject,
-        // subject_offset
-        // );
-
-        // Self {
-        // annotations,
-        // class,
-        // subject,
-        // }
-        // }
-        // }
-
-        // impl FromABIV2Response for NegativeClassAssertion {
-        // fn from_abiv2(bytes: &[u8]) -> Self {
-        // decode_offset!(bytes, annotations_offset, 0, 32);
-        // decode_offset!(bytes, class_offset, 32, 64);
-        // decode_offset!(bytes, subject_offset, 64, 96);
-
-        // decode_param!(
-        // bytes_array;
-        // bytes,
-        // annotations,
-        // annotations_offset,
-        // class_offset
-        // );
-        // decode_param!(
-        // bytes;
-        // bytes,
-        // class,
-        // class_offset,
-        // subject_offset
-        // );
-        // decode_param!(
-        // bytes; bytes,
-        // subject,
-        // subject_offset
-        // );
-
-        // Self {
-        // annotations,
-        // class,
-        // subject,
-        // }
-        // }
-        // }
-
     }
 
     mod custom {
