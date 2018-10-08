@@ -1,0 +1,522 @@
+{
+  "kinds": [
+    {
+      "name": "Class",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49152,
+      "cidPrefixHex": "808003"
+    },
+    {
+      "name": "ObjectIntersectionOf",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49153,
+      "cidPrefixHex": "818003"
+    },
+    {
+      "name": "ObjectUnionOf",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49154,
+      "cidPrefixHex": "828003"
+    },
+    {
+      "name": "ObjectComplementOf",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "complementOf",
+          "kind": "ClassExpression",
+          "required": true
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49155,
+      "cidPrefixHex": "838003"
+    },
+    {
+      "name": "ObjectOneOf",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49156,
+      "cidPrefixHex": "848003"
+    },
+    {
+      "name": "ObjectSomeValuesFrom",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49157,
+      "cidPrefixHex": "858003"
+    },
+    {
+      "name": "ObjectAllValuesFrom",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49158,
+      "cidPrefixHex": "868003"
+    },
+    {
+      "name": "ObjectHasValue",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49159,
+      "cidPrefixHex": "878003"
+    },
+    {
+      "name": "ObjectHasSelf",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49160,
+      "cidPrefixHex": "888003"
+    },
+    {
+      "name": "ObjectMinCardinality",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49161,
+      "cidPrefixHex": "898003"
+    },
+    {
+      "name": "ObjectMaxCardinality",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49162,
+      "cidPrefixHex": "8a8003"
+    },
+    {
+      "name": "ObjectExactCardinality",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49163,
+      "cidPrefixHex": "8b8003"
+    },
+    {
+      "name": "DataSomeValuesFrom",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49164,
+      "cidPrefixHex": "8c8003"
+    },
+    {
+      "name": "DataAllValuesFrom",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49165,
+      "cidPrefixHex": "8d8003"
+    },
+    {
+      "name": "DataHasValue",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49166,
+      "cidPrefixHex": "8e8003"
+    },
+    {
+      "name": "DataMinCardinality",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49167,
+      "cidPrefixHex": "8f8003"
+    },
+    {
+      "name": "DataMaxCardinality",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49168,
+      "cidPrefixHex": "908003"
+    },
+    {
+      "name": "DataExactCardinality",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superClassExpression",
+          "kind": "ClassExpression[]"
+        }
+      ],
+      "expressionKind": "ClassExpression",
+      "cidPrefix": 49169,
+      "cidPrefixHex": "918003"
+    },
+    {
+      "name": "ObjectProperty",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superObjectPropertyExpression",
+          "kind": "ObjectProperyExpression[]"
+        }
+      ],
+      "expressionKind": "ObjectPropertyExpression",
+      "cidPrefix": 49170,
+      "cidPrefixHex": "928003"
+    },
+    {
+      "name": "InverseObjectProperty",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superObjectPropertyExpression",
+          "kind": "ObjectProperyExpression[]"
+        }
+      ],
+      "expressionKind": "ObjectPropertyExpression",
+      "cidPrefix": 49171,
+      "cidPrefixHex": "938003"
+    },
+    {
+      "name": "DataProperty",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "superDataPropertyExpression",
+          "kind": "DataProperyExpression[]"
+        }
+      ],
+      "expressionKind": "DataPropertyExpression",
+      "cidPrefix": 49172,
+      "cidPrefixHex": "948003"
+    },
+    {
+      "name": "Annotation",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "property",
+          "kind": "IRI",
+          "required": true
+        },
+        {
+          "name": "value",
+          "kind": "IRI",
+          "required": true
+        }
+      ],
+      "cidPrefix": 49173,
+      "cidPrefixHex": "958003"
+    },
+    {
+      "name": "Individual",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        }
+      ],
+      "cidPrefix": 49174,
+      "cidPrefixHex": "968003"
+    },
+    {
+      "name": "AnnotationProperty",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        }
+      ],
+      "cidPrefix": 49175,
+      "cidPrefixHex": "978003"
+    },
+    {
+      "name": "ClassAssertion",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "class",
+          "kind": "IRI",
+          "required": true
+        },
+        {
+          "name": "subject",
+          "kind": "IRI",
+          "required": true
+        }
+      ],
+      "cidPrefix": 49176,
+      "cidPrefixHex": "988003"
+    },
+    {
+      "name": "NegativeClassAssertion",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "class",
+          "kind": "IRI",
+          "required": true
+        },
+        {
+          "name": "subject",
+          "kind": "IRI",
+          "required": true
+        }
+      ],
+      "cidPrefix": 49177,
+      "cidPrefixHex": "998003"
+    },
+    {
+      "name": "ObjectPropertyAssertion",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "property",
+          "kind": "IRI"
+        },
+        {
+          "name": "subject",
+          "kind": "IRI"
+        },
+        {
+          "name": "target",
+          "kind": "IRI"
+        }
+      ],
+      "cidPrefix": 49178,
+      "cidPrefixHex": "9a8003"
+    },
+    {
+      "name": "NegativeObjectPropertyAssertion",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "property",
+          "kind": "IRI"
+        },
+        {
+          "name": "subject",
+          "kind": "IRI"
+        },
+        {
+          "name": "target",
+          "kind": "IRI"
+        }
+      ],
+      "cidPrefix": 49179,
+      "cidPrefixHex": "9b8003"
+    },
+    {
+      "name": "DataPropertyAssertion",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "property",
+          "kind": "IRI"
+        },
+        {
+          "name": "subject",
+          "kind": "IRI"
+        },
+        {
+          "name": "target",
+          "kind": "IRI"
+        }
+      ],
+      "cidPrefix": 49180,
+      "cidPrefixHex": "9c8003"
+    },
+    {
+      "name": "NegativeDataPropertyAssertion",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "property",
+          "kind": "IRI"
+        },
+        {
+          "name": "subject",
+          "kind": "IRI"
+        },
+        {
+          "name": "target",
+          "kind": "IRI"
+        }
+      ],
+      "cidPrefix": 49181,
+      "cidPrefixHex": "9d8003"
+    }
+  ]
+}

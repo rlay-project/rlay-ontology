@@ -1,0 +1,3 @@
+sourceIndividual := Individual
+targetIndividual := Individual
+targetValue := Literal

@@ -1,23 +1,164 @@
-syntax = "proto3";
+syntax = "proto2";
 
 package rlay.ontology;
 
-message Annotation {
-  bytes property = 1;
-  string value = 2; // TODO: change to accept both IRI or literal
+message Class {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
 }
 
-message Class {
-  /// List of hashes of annotations
+message ObjectIntersectionOf {
   repeated bytes annotations = 1;
-  /// List of hashes of parent classes
-  repeated bytes sub_class_of_class = 2; // TODO: replace with proper sub_class_of field that takes arbitraty subClassExpressions
+  repeated bytes superClassExpression = 2;
+}
+
+message ObjectUnionOf {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message ObjectComplementOf {
+  repeated bytes annotations = 1;
+  required bytes complementOf = 2;
+  repeated bytes superClassExpression = 3;
+}
+
+message ObjectOneOf {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message ObjectSomeValuesFrom {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message ObjectAllValuesFrom {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message ObjectHasValue {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message ObjectHasSelf {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message ObjectMinCardinality {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message ObjectMaxCardinality {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message ObjectExactCardinality {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message DataSomeValuesFrom {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message DataAllValuesFrom {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message DataHasValue {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message DataMinCardinality {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message DataMaxCardinality {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message DataExactCardinality {
+  repeated bytes annotations = 1;
+  repeated bytes superClassExpression = 2;
+}
+
+message ObjectProperty {
+  repeated bytes annotations = 1;
+  repeated bytes superObjectPropertyExpression = 2;
+}
+
+message InverseObjectProperty {
+  repeated bytes annotations = 1;
+  repeated bytes superObjectPropertyExpression = 2;
+}
+
+message DataProperty {
+  repeated bytes annotations = 1;
+  repeated bytes superDataPropertyExpression = 2;
+}
+
+message Annotation {
+  repeated bytes annotations = 1;
+  required bytes property = 2;
+  required bytes value = 3;
 }
 
 message Individual {
-  /// List of hashes of annotations
   repeated bytes annotations = 1;
-  /// List of hashes of asserted classes
-  repeated bytes class_assertions = 2;
-  repeated bytes negative_class_assertions = 3;
 }
+
+message AnnotationProperty {
+  repeated bytes annotations = 1;
+}
+
+message ClassAssertion {
+  repeated bytes annotations = 1;
+  required bytes class = 2;
+  required bytes subject = 3;
+}
+
+message NegativeClassAssertion {
+  repeated bytes annotations = 1;
+  required bytes class = 2;
+  required bytes subject = 3;
+}
+
+message ObjectPropertyAssertion {
+  repeated bytes annotations = 1;
+  optional bytes property = 2;
+  optional bytes subject = 3;
+  optional bytes target = 4;
+}
+
+message NegativeObjectPropertyAssertion {
+  repeated bytes annotations = 1;
+  optional bytes property = 2;
+  optional bytes subject = 3;
+  optional bytes target = 4;
+}
+
+message DataPropertyAssertion {
+  repeated bytes annotations = 1;
+  optional bytes property = 2;
+  optional bytes subject = 3;
+  optional bytes target = 4;
+}
+
+message NegativeDataPropertyAssertion {
+  repeated bytes annotations = 1;
+  optional bytes property = 2;
+  optional bytes subject = 3;
+  optional bytes target = 4;
+}
+
