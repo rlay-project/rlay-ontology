@@ -402,6 +402,23 @@ mod main {
                         _ => Err(()),
                     }}
                 }}
+
+                pub fn empty_entity(&self) -> Entity {{
+                    match self {{
+        "
+        ).unwrap();
+        for name in kind_names.iter() {
+            write!(
+                out_file,
+                "EntityKind::{0} => {0}::default().into(),\n",
+                name
+            ).unwrap();
+        }
+        write!(
+            out_file,
+            "
+                    }}
+                }}
             }}
         "
         ).unwrap();

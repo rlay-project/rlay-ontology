@@ -943,7 +943,7 @@ dependencies = [
 
 [[package]]
 name = "rlay_ontology"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bytes 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "cid 0.2.3 (git+https://github.com/hobofan/rust-cid?rev=27798e5245c234dae1236470a5a5568cb067a216)",
@@ -974,7 +974,7 @@ dependencies = [
  "multibase 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "multihash 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)",
- "rlay_ontology 0.1.0",
+ "rlay_ontology 0.2.0",
  "serde 1.0.78 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.78 (registry+https://github.com/rust-lang/crates.io-index)",
  "stdweb 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",

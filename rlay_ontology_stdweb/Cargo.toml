@@ -15,7 +15,7 @@ log = { version = "0.4.1"}
 hobofan_stdweb_logger = "0.1.0"
 serde = "1.0.27"
 serde_derive = "1.0.27"
-rlay_ontology = { version = "0.1.0", path = "../rlay_ontology" }
+rlay_ontology = { version = "0.2.0", path = "../rlay_ontology" }
 multihash = "0.8.0"
 multibase = "0.6.0"
 cid = "0.2.3"
