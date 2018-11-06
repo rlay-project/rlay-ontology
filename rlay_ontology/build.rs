@@ -1,10 +1,15 @@
 #![allow(unused_imports)]
 extern crate heck;
+extern crate proc_macro2;
 extern crate prost_build;
+#[macro_use]
+extern crate quote;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+#[macro_use]
+extern crate syn;
 
 use std::env;
 use std::fs::File;
@@ -12,8 +17,8 @@ use std::io::Write;
 use std::io::prelude::*;
 use std::path::Path;
 use heck::SnakeCase;
-
 use serde_json::Value;
+use proc_macro2::TokenStream;
 
 fn main() {
     prost_build::compile_protos(&["src/ontology.proto"], &["src/"]).unwrap();
@@ -33,6 +38,13 @@ impl Field {
     pub fn is_array_kind(&self) -> bool {
         self.kind.ends_with("[]")
     }
+}
+
+fn kind_names_types(kind_names: &[String]) -> Vec<syn::Type> {
+    kind_names
+        .iter()
+        .map(|n| syn::parse_str(n).unwrap())
+        .collect()
 }
 
 mod main {
@@ -97,9 +109,9 @@ mod main {
         write_entity(&mut out_file, kind_names.clone());
     }
 
-    fn write_impl_serialize(out_file: &mut File, kind_name: &str, fields: &[Field]) {
+    fn write_impl_serialize<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
         write!(
-            out_file,
+            writer,
             "
                 impl ::serde::Serialize for {0} {{
                     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -115,17 +127,17 @@ mod main {
         ).unwrap();
         for field in fields.iter() {
             if field.is_array_kind() {
-                write!(out_file, "pub {0}: Vec<HexString<'a>>,\n", field.name).unwrap();
+                write!(writer, "pub {0}: Vec<HexString<'a>>,\n", field.name).unwrap();
             } else {
                 if field.required {
-                    write!(out_file, "pub {0}: HexString<'a>,\n", field.name).unwrap();
+                    write!(writer, "pub {0}: HexString<'a>,\n", field.name).unwrap();
                 } else {
-                    write!(out_file, "pub {0}: Option<HexString<'a>>,\n", field.name).unwrap();
+                    write!(writer, "pub {0}: Option<HexString<'a>>,\n", field.name).unwrap();
                 }
             }
         }
         write!(
-            out_file,
+            writer,
             "
                 }}
 
@@ -137,7 +149,7 @@ mod main {
         for field in fields.iter() {
             if field.is_array_kind() {
                 write!(
-                    out_file,
+                    writer,
                     "{0}: self.{1}.iter().map(|n| HexString::wrap(n)).collect(),\n",
                     field.name,
                     field.name.to_snake_case(),
@@ -145,14 +157,14 @@ mod main {
             } else {
                 if field.required {
                     write!(
-                        out_file,
+                        writer,
                         "{0}: HexString::wrap(&self.{1}),\n",
                         field.name,
                         field.name.to_snake_case(),
                     ).unwrap();
                 } else {
                     write!(
-                        out_file,
+                        writer,
                         "{0}: HexString::wrap_option(self.{1}.as_ref()),\n",
                         field.name,
                         field.name.to_snake_case(),
@@ -161,7 +173,7 @@ mod main {
             }
         }
         write!(
-            out_file,
+            writer,
             "
                         }};
 
@@ -172,9 +184,9 @@ mod main {
         ).unwrap();
     }
 
-    fn write_impl_deserialize(out_file: &mut File, kind_name: &str, fields: &[Field]) {
+    fn write_impl_deserialize<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
         write!(
-            out_file,
+            writer,
             "
                 impl<'de> Deserialize<'de> for {0} {{
                     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -187,13 +199,13 @@ mod main {
 
         let field_names: Vec<String> = fields.iter().map(|n| n.name.clone()).collect();
         write!(
-            out_file,
+            writer,
             "const FIELDS: &'static [&'static str] = &{:?};",
             field_names
         ).unwrap();
 
         write!(
-            out_file,
+            writer,
             "
                 impl<'de> Visitor<'de> for ThisEntityVisitor {{
                     type Value = {0};
@@ -212,7 +224,7 @@ mod main {
         for field in fields.iter() {
             if field.is_array_kind() {
                 write!(
-                    out_file,
+                    writer,
                     "
                         let mut {0}: Option<Vec<String>> = None;
                     ",
@@ -220,7 +232,7 @@ mod main {
                 ).unwrap();
             } else {
                 write!(
-                    out_file,
+                    writer,
                     "
                         let mut {0}: Option<String> = None;
                     ",
@@ -230,7 +242,7 @@ mod main {
         }
 
         write!(
-            out_file,
+            writer,
             "
                 loop {{
                     let key = map.next_key::<String>()?;
@@ -240,7 +252,7 @@ mod main {
 
         for field in fields.iter() {
             write!(
-                out_file,
+                writer,
                 "
                     Some(ref key) if key == \"{0}\" => {{
                         if {1}.is_some() {{
@@ -255,7 +267,7 @@ mod main {
         }
 
         write!(
-            out_file,
+            writer,
             "
                         Some(ref unknown) => {{
                             return Err(de::Error::unknown_field(unknown, FIELDS))
@@ -267,59 +279,53 @@ mod main {
         ).unwrap();
 
         for field in fields.iter() {
-            write!(
-                out_file,
-                "
-                    let {0} = {0}
-                ",
-                field.name.to_snake_case()
-            ).unwrap();
-            if field.is_array_kind() {
-                write!(
-                    out_file,
-                    "
+            let field_name_raw = &field.name;
+            let field_name_snake: syn::Ident = syn::parse_str(&field.name.to_snake_case()).unwrap();
+
+            let field_deserialize_tokens: TokenStream = match field.is_array_kind() {
+                true => {
+                    parse_quote!{
+                        let #field_name_snake = #field_name_snake
                             .unwrap_or(Vec::new())
                             .into_iter()
                             .map(|n| {{
                                 n[2..].from_hex().map_err(|_| {{
                                     de::Error::invalid_value(
-                                        de::Unexpected::Other(\"invalid hexstring\"),
-                                        &\"hexstring\",
+                                        de::Unexpected::Other("invalid hexstring"),
+                                        &"hexstring",
                                     )
                                 }})
                             }})
                             .collect::<Result<_, _>>()?;
-                    ",
-                ).unwrap();
-            } else {
-                write!(
-                    out_file,
-                    "
+                    }
+                }
+                false => {
+                    let mut tokens = parse_quote!{
+                        let #field_name_snake = #field_name_snake
                             .map(|n| {{
                                 n[2..].from_hex().map_err(|_| {{
                                     de::Error::invalid_value(
-                                        de::Unexpected::Other(\"invalid hexstring\"),
-                                        &\"hexstring\",
+                                        de::Unexpected::Other("invalid hexstring"),
+                                        &"hexstring",
                                     )
                                 }})
                             }}).map_or(Ok(None), |v| v.map(Some))?;
-                    ",
-                ).unwrap();
-                if field.required {
-                    write!(
-                        out_file,
-                        "
-                            let {0} = {0}.ok_or(de::Error::missing_field(\"{1}\"))?;
-                        ",
-                        field.name.to_snake_case(),
-                        field.name,
-                    ).unwrap();
+                    };
+                    if field.required {
+                        tokens = parse_quote!{
+                            #tokens
+
+                            let #field_name_snake = #field_name_snake.ok_or(de::Error::missing_field(#field_name_raw))?;
+                        }
+                    }
+                    tokens
                 }
-            }
+            };
+            write!(writer, "{}", field_deserialize_tokens).unwrap();
         }
 
         write!(
-            out_file,
+            writer,
             "
                 Ok({0} {{
             ",
@@ -329,7 +335,7 @@ mod main {
         // Fields in constructor
         for field in fields.iter() {
             write!(
-                out_file,
+                writer,
                 "
                     {0},
                 ",
@@ -338,7 +344,7 @@ mod main {
         }
 
         write!(
-            out_file,
+            writer,
             "
                         }})
                     }}
@@ -347,7 +353,7 @@ mod main {
         ).unwrap();
 
         write!(
-            out_file,
+            writer,
             "
                         deserializer.deserialize_struct(\"{0}\", FIELDS, ThisEntityVisitor)
                     }}
@@ -357,19 +363,19 @@ mod main {
         ).unwrap();
     }
 
-    fn write_entity_kind(out_file: &mut File, kind_names: Vec<String>) {
+    fn write_entity_kind<W: Write>(writer: &mut W, kind_names: Vec<String>) {
         write!(
-            out_file,
+            writer,
             "
             #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
             pub enum EntityKind {{
         "
         ).unwrap();
         for name in kind_names.iter() {
-            write!(out_file, "{},\n", name).unwrap();
+            write!(writer, "{},\n", name).unwrap();
         }
         write!(
-            out_file,
+            writer,
             "
             }}
 
@@ -379,10 +385,10 @@ mod main {
         "
         ).unwrap();
         for name in kind_names.iter() {
-            write!(out_file, "EntityKind::{0} => \"{0}\",\n", name).unwrap();
+            write!(writer, "EntityKind::{0} => \"{0}\",\n", name).unwrap();
         }
         write!(
-            out_file,
+            writer,
             "
                     }}
                 }}
@@ -394,10 +400,10 @@ mod main {
         "
         ).unwrap();
         for name in kind_names.iter() {
-            write!(out_file, "\"{0}\" => Ok(EntityKind::{0}),\n", name).unwrap();
+            write!(writer, "\"{0}\" => Ok(EntityKind::{0}),\n", name).unwrap();
         }
         write!(
-            out_file,
+            writer,
             "
                         _ => Err(()),
                     }}
@@ -408,14 +414,10 @@ mod main {
         "
         ).unwrap();
         for name in kind_names.iter() {
-            write!(
-                out_file,
-                "EntityKind::{0} => {0}::default().into(),\n",
-                name
-            ).unwrap();
+            write!(writer, "EntityKind::{0} => {0}::default().into(),\n", name).unwrap();
         }
         write!(
-            out_file,
+            writer,
             "
                     }}
                 }}
@@ -424,94 +426,70 @@ mod main {
         ).unwrap();
     }
 
-    fn write_entity(out_file: &mut File, kind_names: Vec<String>) {
-        write!(
-            out_file,
-            "
-            #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-            #[serde(tag = \"type\")]
-            pub enum Entity {{
-        "
-        ).unwrap();
-        for name in kind_names.iter() {
-            write!(out_file, "{0}({0}),\n", name).unwrap();
-        }
-        write!(
-            out_file,
-            "
-            }}
+    fn write_entity<W: Write>(writer: &mut W, kind_names: Vec<String>) {
+        let variants = kind_names_types(&kind_names);
 
-            impl ToCid for Entity {{
-                fn to_cid(&self) -> Result<Cid, CidError> {{
-                    match &self {{
-        "
-        ).unwrap();
-        for name in kind_names.iter() {
-            write!(out_file, "Entity::{0}(ent) => ent.to_cid(),\n", name).unwrap();
+        // Entity
+        {
+            let variants = variants.clone();
+            let variants2 = variants.clone();
+            let type_impl: TokenStream = parse_quote! {
+                #[derive(Debug, Clone, PartialEq)]
+                pub enum Entity {
+                    #(#variants(#variants2)),
+                    *
+                }
+            };
+            write!(writer, "{}", type_impl).unwrap();
         }
-        write!(
-            out_file,
-            "
-                    }}
-                }}
-            }}
-        "
-        ).unwrap();
-
-        write!(
-            out_file,
-            "
-            #[cfg(feature = \"web3_compat\")]
-            impl FromABIV2ResponseHinted for Entity {{
-                fn from_abiv2(bytes: &[u8], kind: &EntityKind) -> Self {{
-                    match kind {{
-        "
-        ).unwrap();
-        for name in kind_names.iter() {
-            write!(
-                out_file,
-                "
-                    EntityKind::{0} => {{
-                        Entity::{0}(FromABIV2Response::from_abiv2(bytes))
-                    }}
-                ",
-                name
-            ).unwrap();
+        // impl ToCid
+        {
+            let variants = variants.clone();
+            let trait_impl: TokenStream = parse_quote! {
+                impl ToCid for Entity {
+                    fn to_cid(&self) -> Result<Cid, CidError> {
+                        match &self {
+                            #(Entity::#variants(ent) => ent.to_cid()),
+                            *
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", trait_impl).unwrap();
         }
-        write!(
-            out_file,
-            "
-                    }}
-                }}
-            }}
-        "
-        ).unwrap();
-
-        write!(
-            out_file,
-            "
-            impl Entity {{
-                pub fn kind(&self) -> EntityKind {{
-                    match &self {{
-        "
-        ).unwrap();
-        for name in kind_names.iter() {
-            write!(
-                out_file,
-                "
-                    Entity::{0}(_) => EntityKind::{0},
-                ",
-                name
-            ).unwrap();
+        // impl Entity
+        {
+            let variants = variants.clone();
+            let variants2 = variants.clone();
+            let type_impl: TokenStream = parse_quote! {
+                impl Entity {
+                    pub fn kind(&self) -> EntityKind {
+                        match &self {
+                            #(Entity::#variants(_) => EntityKind::#variants2),
+                            *
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", type_impl).unwrap();
         }
-        write!(
-            out_file,
-            "
-                    }}
-                }}
-            }}
-        "
-        ).unwrap();
+        // impl FromABIV2ResponseHinted
+        {
+            let variants = variants.clone();
+            let variants2 = variants.clone();
+            let trait_impl: TokenStream = parse_quote! {
+                #[cfg(feature = "web3_compat")]
+                impl FromABIV2ResponseHinted for Entity {
+                    fn from_abiv2(bytes: &[u8], kind: &EntityKind) -> Self {
+                        match kind {
+                            #(EntityKind::#variants => Entity::#variants2(FromABIV2Response::from_abiv2(bytes))),
+                            *
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", trait_impl).unwrap();
+        }
     }
 }
 
@@ -536,79 +514,144 @@ mod web3 {
             .as_array()
             .unwrap();
 
+        // impl FromABIV2Response
         for raw_kind in kinds {
-            let kind = raw_kind.as_object().unwrap();
+            write_entity_impl_from_abiv2_response(&mut out_file, raw_kind);
+        }
 
-            let kind_name = kind["name"].as_str().unwrap();
+        let kind_names: Vec<String> = kinds
+            .iter()
+            .map(|raw_kind| {
+                let kind = raw_kind.as_object().unwrap();
+                kind["name"].as_str().unwrap().to_owned()
+            })
+            .collect();
+        write_entity_web3_format(&mut out_file, kind_names);
+    }
 
-            let fields: Vec<Field> = serde_json::from_value(kind["fields"].clone()).unwrap();
+    fn write_entity_impl_from_abiv2_response<W: Write>(writer: &mut W, raw_kind: &Value) {
+        let kind = raw_kind.as_object().unwrap();
+        let kind_name = kind["name"].as_str().unwrap();
+        let fields: Vec<Field> = serde_json::from_value(kind["fields"].clone()).unwrap();
 
-            // impl FromABIV2Response
+        let mut fn_body = std::io::Cursor::new(Vec::<u8>::new());
+
+        for (i, field) in fields.iter().enumerate() {
             write!(
-                out_file,
-                "
-                    impl FromABIV2Response for {0} {{
-                        fn from_abiv2(bytes: &[u8]) -> Self {{
-                ",
-                kind_name
+                fn_body,
+                "decode_offset!(bytes, {0}_offset, {1}, {2});\n",
+                field.name.to_snake_case(),
+                i * 32,
+                (i + 1) * 32,
             ).unwrap();
+        }
+        for (i, field) in fields.iter().enumerate() {
+            let next_field = fields.get(i + 1);
 
-            for (i, field) in fields.iter().enumerate() {
-                write!(
-                    out_file,
-                    "decode_offset!(bytes, {0}_offset, {1}, {2});\n",
-                    field.name.to_snake_case(),
-                    i * 32,
-                    (i + 1) * 32,
-                ).unwrap();
+            let field_kind = match field.is_array_kind() {
+                true => "bytes_array",
+                false => "bytes",
+            };
+            write!(
+                fn_body,
+                "decode_param!({0}; bytes, {1}, {1}_offset",
+                field_kind,
+                field.name.to_snake_case(),
+            ).unwrap();
+            if let Some(next_field) = next_field {
+                write!(fn_body, ",{0}_offset", next_field.name.to_snake_case(),).unwrap();
             }
-            for (i, field) in fields.iter().enumerate() {
-                let next_field = fields.get(i + 1);
-
-                let field_kind = match field.is_array_kind() {
-                    true => "bytes_array",
-                    false => "bytes",
-                };
-                write!(
-                    out_file,
-                    "decode_param!({0}; bytes, {1}, {1}_offset",
-                    field_kind,
-                    field.name.to_snake_case(),
-                ).unwrap();
-                if let Some(next_field) = next_field {
-                    write!(out_file, ",{0}_offset", next_field.name.to_snake_case(),).unwrap();
-                }
-                write!(out_file, ");\n",).unwrap();
-            }
-            for field in fields.iter() {
-                if field.required || field.is_array_kind() {
-                    continue;
-                }
-
-                write!(
-                    out_file,
-                    "let {0}: Option<Vec<u8>> = to_option_bytes({0});\n",
-                    field.name.to_snake_case()
-                ).unwrap();
+            write!(fn_body, ");\n",).unwrap();
+        }
+        for field in fields.iter() {
+            if field.required || field.is_array_kind() {
+                continue;
             }
 
             write!(
-                out_file,
-                "
+                fn_body,
+                "let {0}: Option<Vec<u8>> = to_option_bytes({0});\n",
+                field.name.to_snake_case()
+            ).unwrap();
+        }
+
+        write!(
+            fn_body,
+            "
                     Self {{
                 ",
-            ).unwrap();
-            for field in fields.iter() {
-                write!(out_file, "{0},\n", field.name.to_snake_case()).unwrap();
-            }
-            write!(
-                out_file,
-                "
-                            }}
-                        }}
+        ).unwrap();
+        for field in fields.iter() {
+            write!(fn_body, "{0},\n", field.name.to_snake_case()).unwrap();
+        }
+        write!(
+            fn_body,
+            "
                     }}
                 ",
-            ).unwrap();
+        ).unwrap();
+
+        let fn_body_tokens: TokenStream =
+            syn::parse_str(std::str::from_utf8(&fn_body.into_inner()).unwrap()).unwrap();
+        let kind_name_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+        let trait_impl: TokenStream = parse_quote! {
+            impl FromABIV2Response for #kind_name_ty {
+                fn from_abiv2(bytes: &[u8]) -> Self {
+                    #fn_body_tokens
+                }
+            }
+        };
+        write!(writer, "{}", trait_impl,).unwrap();
+    }
+
+    fn write_entity_web3_format<W: Write>(writer: &mut W, kind_names: Vec<String>) {
+        let variants = kind_names_types(&kind_names);
+
+        // EntityWeb3Format
+        {
+            let variants = variants.clone();
+            let variants2 = variants.clone();
+            let type_impl: TokenStream = parse_quote! {
+                #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+                #[serde(tag = "type")]
+                pub enum EntityWeb3Format {
+                    #(#variants(#variants2)),
+                    *
+                }
+            };
+            write!(writer, "{}", type_impl).unwrap();
+        }
+        // From
+        {
+            let variants = variants.clone();
+            let variants2 = variants.clone();
+            let from_impl: TokenStream = parse_quote! {
+                impl From<Entity> for EntityWeb3Format {
+                    fn from(original: Entity) -> Self {
+                        match original {
+                            #(Entity::#variants(ent) => EntityWeb3Format::#variants2(ent)),
+                            *
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", from_impl).unwrap();
+        }
+        // Into
+        {
+            let variants = variants.clone();
+            let variants2 = variants.clone();
+            let into_impl: TokenStream = parse_quote! {
+                impl Into<Entity> for EntityWeb3Format {
+                    fn into(self) -> Entity {
+                        match self {
+                            #(EntityWeb3Format::#variants(ent) => Entity::#variants2(ent)),
+                            *
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", into_impl).unwrap();
         }
     }
 }

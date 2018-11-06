@@ -123,6 +123,14 @@ pub mod ontology {
 
         use web3::types::U256;
 
+        pub trait Web3Format<'a> {
+            type Formatted: serde::Deserialize<'a> + serde::Serialize;
+
+            fn to_web3_format(self) -> Self::Formatted;
+
+            fn from_web3_format(formatted: Self::Formatted) -> Self;
+        }
+
         /// Decode a single ethabi param of type bytes
         fn decode_bytes(bytes: &[u8]) -> Vec<u8> {
             let length = U256::from_big_endian(&bytes[0..32]);
@@ -197,6 +205,18 @@ pub mod ontology {
         }
 
         include!(concat!(env!("OUT_DIR"), "/rlay.ontology.web3_applied.rs"));
+
+        impl<'a> Web3Format<'a> for Entity {
+            type Formatted = EntityWeb3Format;
+
+            fn to_web3_format(self) -> Self::Formatted {
+                EntityWeb3Format::from(self)
+            }
+
+            fn from_web3_format(formatted: Self::Formatted) -> Self {
+                formatted.into()
+            }
+        }
     }
 
     mod custom {
