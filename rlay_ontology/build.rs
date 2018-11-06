@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+#![recursion_limit = "128"]
 extern crate heck;
 extern crate proc_macro2;
 extern crate prost_build;
@@ -37,6 +38,10 @@ struct Field {
 impl Field {
     pub fn is_array_kind(&self) -> bool {
         self.kind.ends_with("[]")
+    }
+
+    pub fn field_ident(&self) -> syn::Ident {
+        syn::parse_str(&self.name.to_snake_case()).unwrap()
     }
 }
 
@@ -185,245 +190,210 @@ mod main {
     }
 
     fn write_impl_deserialize<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
-        write!(
-            writer,
-            "
-                impl<'de> Deserialize<'de> for {0} {{
-                    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-                        where D: Deserializer<'de>,
-                    {{
-                        struct ThisEntityVisitor;
-            ",
-            kind_name
-        ).unwrap();
-
         let field_names: Vec<String> = fields.iter().map(|n| n.name.clone()).collect();
-        write!(
-            writer,
+        let field_names_const_decl: TokenStream = syn::parse_str(&format!(
             "const FIELDS: &'static [&'static str] = &{:?};",
             field_names
-        ).unwrap();
+        )).unwrap();
 
-        write!(
-            writer,
-            "
-                impl<'de> Visitor<'de> for ThisEntityVisitor {{
-                    type Value = {0};
-
-                    fn expecting(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {{
-                        formatter.write_str(\"struct {0}\")
-                    }}
-
-                    fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
-                        where V: MapAccess<'de>,
-                    {{
-            ",
-            kind_name
-        ).unwrap();
-
-        for field in fields.iter() {
-            if field.is_array_kind() {
-                write!(
-                    writer,
-                    "
-                        let mut {0}: Option<Vec<String>> = None;
-                    ",
-                    field.name.to_snake_case()
-                ).unwrap();
-            } else {
-                write!(
-                    writer,
-                    "
-                        let mut {0}: Option<String> = None;
-                    ",
-                    field.name.to_snake_case()
-                ).unwrap();
-            }
-        }
-
-        write!(
-            writer,
-            "
-                loop {{
-                    let key = map.next_key::<String>()?;
-                    match key {{
-            "
-        ).unwrap();
-
-        for field in fields.iter() {
-            write!(
-                writer,
-                "
-                    Some(ref key) if key == \"{0}\" => {{
-                        if {1}.is_some() {{
-                            return Err(de::Error::duplicate_field(\"{0}\"));
-                        }}
-                        {1} = Some(map.next_value()?);
-                    }}
-                ",
-                field.name,
-                field.name.to_snake_case()
-            ).unwrap();
-        }
-
-        write!(
-            writer,
-            "
-                        Some(ref unknown) => {{
-                            return Err(de::Error::unknown_field(unknown, FIELDS))
-                        }}
-                        None => break,
-                    }}
-                }}
-            "
-        ).unwrap();
-
-        for field in fields.iter() {
-            let field_name_raw = &field.name;
-            let field_name_snake: syn::Ident = syn::parse_str(&field.name.to_snake_case()).unwrap();
-
-            let field_deserialize_tokens: TokenStream = match field.is_array_kind() {
-                true => {
-                    parse_quote!{
-                        let #field_name_snake = #field_name_snake
-                            .unwrap_or(Vec::new())
-                            .into_iter()
-                            .map(|n| {{
-                                n[2..].from_hex().map_err(|_| {{
-                                    de::Error::invalid_value(
-                                        de::Unexpected::Other("invalid hexstring"),
-                                        &"hexstring",
-                                    )
-                                }})
-                            }})
-                            .collect::<Result<_, _>>()?;
-                    }
-                }
-                false => {
-                    let mut tokens = parse_quote!{
-                        let #field_name_snake = #field_name_snake
-                            .map(|n| {{
-                                n[2..].from_hex().map_err(|_| {{
-                                    de::Error::invalid_value(
-                                        de::Unexpected::Other("invalid hexstring"),
-                                        &"hexstring",
-                                    )
-                                }})
-                            }}).map_or(Ok(None), |v| v.map(Some))?;
-                    };
-                    if field.required {
-                        tokens = parse_quote!{
-                            #tokens
-
-                            let #field_name_snake = #field_name_snake.ok_or(de::Error::missing_field(#field_name_raw))?;
+        // intializes a empty Option variable for each field
+        let initialize_empty_fields: TokenStream = fields
+            .iter()
+            .map(|field| {
+                let field_ident = field.field_ident();
+                let stmt: TokenStream = match field.is_array_kind() {
+                    true => {
+                        parse_quote! {
+                            let mut #field_ident: Option<Vec<String>> = None;
                         }
                     }
-                    tokens
+                    false => {
+                        parse_quote! {
+                                    let mut #field_ident: Option<String> = None;
+                        }
+                    }
+                };
+                stmt
+            })
+            .collect();
+
+        // tries to extract set the field variable if the field exists in the map
+        let field_names_raw: Vec<String> = fields.iter().map(|n| n.name.clone()).collect();
+        let field_names_raw2 = field_names_raw.clone();
+        let field_names_snake: Vec<syn::Ident> = fields
+            .iter()
+            .map(|n| syn::parse_str(&n.name.to_snake_case()).unwrap())
+            .collect();
+        let field_names_snake2 = field_names_snake.clone();
+        let extract_keys_loop: TokenStream = parse_quote! {
+            loop {
+                let key = map.next_key::<String>()?;
+                match key {
+                    #(
+                        Some(ref key) if key == #field_names_raw => {
+                            if #field_names_snake.is_some() {{
+                                return Err(de::Error::duplicate_field(#field_names_raw2));
+                            }}
+                            #field_names_snake2 = Some(map.next_value()?);
+                        }
+                     )*
+                    Some(ref unknown) => {
+                        return Err(de::Error::unknown_field(unknown, FIELDS))
+                    }
+                    None => break,
                 }
-            };
-            write!(writer, "{}", field_deserialize_tokens).unwrap();
-        }
+            }
+        };
 
-        write!(
-            writer,
-            "
-                Ok({0} {{
-            ",
-            kind_name
-        ).unwrap();
+        // applies appropiate deserialize call to each field accoring to type
+        let field_deserialize_calls: TokenStream = fields
+            .iter()
+            .map(|field| {
+                let field_name_raw = &field.name;
+                let field_name_snake: syn::Ident =
+                    syn::parse_str(&field.name.to_snake_case()).unwrap();
 
-        // Fields in constructor
-        for field in fields.iter() {
-            write!(
-                writer,
-                "
-                    {0},
-                ",
-                field.name.to_snake_case()
-            ).unwrap();
-        }
+                let field_deserialize_tokens: TokenStream = match field.is_array_kind() {
+                    true => {
+                        parse_quote!{
+                            let #field_name_snake = #field_name_snake
+                                .unwrap_or(Vec::new())
+                                .into_iter()
+                                .map(|n| {{
+                                    n[2..].from_hex().map_err(|_| {{
+                                        de::Error::invalid_value(
+                                            de::Unexpected::Other("invalid hexstring"),
+                                            &"hexstring",
+                                        )
+                                    }})
+                                }})
+                                .collect::<Result<_, _>>()?;
+                        }
+                    }
+                    false => {
+                        let mut tokens = parse_quote!{
+                            let #field_name_snake = #field_name_snake
+                                .map(|n| {{
+                                    n[2..].from_hex().map_err(|_| {{
+                                        de::Error::invalid_value(
+                                            de::Unexpected::Other("invalid hexstring"),
+                                            &"hexstring",
+                                        )
+                                    }})
+                                }}).map_or(Ok(None), |v| v.map(Some))?;
+                        };
+                        if field.required {
+                            tokens = parse_quote!{
+                                #tokens
 
-        write!(
-            writer,
-            "
-                        }})
-                    }}
-                }}
-            ",
-        ).unwrap();
+                                let #field_name_snake = #field_name_snake.ok_or(de::Error::missing_field(#field_name_raw))?;
+                            }
+                        }
+                        tokens
+                    }
+                };
+                field_deserialize_tokens
+            })
+            .collect();
 
-        write!(
-            writer,
-            "
-                        deserializer.deserialize_struct(\"{0}\", FIELDS, ThisEntityVisitor)
-                    }}
-                }}
-            ",
-            kind_name
-        ).unwrap();
+        let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+        let field_idents: Vec<_> = fields.iter().map(|n| n.field_ident()).collect();
+        let constructor_call: TokenStream = parse_quote! {
+            Ok(#kind_ty {
+                #(#field_idents),
+                *
+            })
+        };
+
+        let expecting_msg = format!("struct {}", kind_name);
+        let trait_impl: TokenStream = parse_quote! {
+            impl<'de> Deserialize<'de> for #kind_ty {
+                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                    where D: Deserializer<'de>,
+                {
+                    struct ThisEntityVisitor;
+
+                    #field_names_const_decl
+
+                    impl<'de> Visitor<'de> for ThisEntityVisitor {
+                        type Value = #kind_ty;
+
+                        fn expecting(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                            formatter.write_str(#expecting_msg)
+                        }
+
+                        fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
+                            where V: MapAccess<'de>,
+                        {
+                            #initialize_empty_fields
+                            #extract_keys_loop
+                            #field_deserialize_calls
+                            #constructor_call
+
+                        }
+                    }
+                    deserializer.deserialize_struct(#kind_name, FIELDS, ThisEntityVisitor)
+                }
+            }
+        };
+
+        write!(writer, "{}", trait_impl).unwrap();
     }
 
     fn write_entity_kind<W: Write>(writer: &mut W, kind_names: Vec<String>) {
-        write!(
-            writer,
-            "
-            #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-            pub enum EntityKind {{
-        "
-        ).unwrap();
-        for name in kind_names.iter() {
-            write!(writer, "{},\n", name).unwrap();
+        let variants = kind_names_types(&kind_names);
+        // EntityKind
+        {
+            let variants = variants.clone();
+            let type_impl: TokenStream = parse_quote! {
+                #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+                pub enum EntityKind {
+                    #(#variants),
+                    *
+                }
+            };
+            write!(writer, "{}", type_impl).unwrap();
         }
-        write!(
-            writer,
-            "
-            }}
+        // Into<&'a str>
+        {
+            let variants = variants.clone();
+            let kind_names = kind_names.clone();
+            let trait_impl: TokenStream = parse_quote! {
+                impl<'a> Into<&'a str> for EntityKind {
+                    fn into(self) -> &'a str {
+                        match &self {
+                            #(EntityKind::#variants => #kind_names),
+                            *
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", trait_impl).unwrap();
+        }
+        // impl EntityKind
+        {
+            let kind_names = kind_names.clone();
+            let variants = variants.clone();
+            let variants2 = variants.clone();
+            let variants3 = variants.clone();
+            let trait_impl: TokenStream = parse_quote! {
+                impl EntityKind {
+                    pub fn from_name(name: &str) -> Result<Self, ()> {
+                        match name {
+                            #(#kind_names => Ok(EntityKind::#variants)),*,
+                            _ => Err(()),
+                        }
+                    }
 
-            impl<'a> Into<&'a str> for EntityKind {{
-                fn into(self) -> &'a str {{
-                    match &self {{
-        "
-        ).unwrap();
-        for name in kind_names.iter() {
-            write!(writer, "EntityKind::{0} => \"{0}\",\n", name).unwrap();
+                    pub fn empty_entity(&self) -> Entity {
+                        match self {
+                            #(EntityKind::#variants2 => #variants3::default().into()),*
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", trait_impl).unwrap();
         }
-        write!(
-            writer,
-            "
-                    }}
-                }}
-            }}
-
-            impl EntityKind {{
-                pub fn from_name(name: &str) -> Result<Self, ()> {{
-                    match name {{
-        "
-        ).unwrap();
-        for name in kind_names.iter() {
-            write!(writer, "\"{0}\" => Ok(EntityKind::{0}),\n", name).unwrap();
-        }
-        write!(
-            writer,
-            "
-                        _ => Err(()),
-                    }}
-                }}
-
-                pub fn empty_entity(&self) -> Entity {{
-                    match self {{
-        "
-        ).unwrap();
-        for name in kind_names.iter() {
-            write!(writer, "EntityKind::{0} => {0}::default().into(),\n", name).unwrap();
-        }
-        write!(
-            writer,
-            "
-                    }}
-                }}
-            }}
-        "
-        ).unwrap();
     }
 
     fn write_entity<W: Write>(writer: &mut W, kind_names: Vec<String>) {
@@ -534,70 +504,84 @@ mod web3 {
         let kind_name = kind["name"].as_str().unwrap();
         let fields: Vec<Field> = serde_json::from_value(kind["fields"].clone()).unwrap();
 
-        let mut fn_body = std::io::Cursor::new(Vec::<u8>::new());
+        let decode_offset_macros: TokenStream = fields
+            .iter()
+            .enumerate()
+            .map(|(i, field)| {
+                let offset_ident: syn::Ident =
+                    syn::parse_str(&format!("{}_offset", field.name.to_snake_case())).unwrap();
+                let offset_start = i * 32;
+                let offset_end = (i + 1) * 32;
+                let tokens: TokenStream = parse_quote! {
+                    decode_offset!(bytes, #offset_ident, #offset_start, #offset_end);
+                };
+                tokens
+            })
+            .collect();
 
-        for (i, field) in fields.iter().enumerate() {
-            write!(
-                fn_body,
-                "decode_offset!(bytes, {0}_offset, {1}, {2});\n",
-                field.name.to_snake_case(),
-                i * 32,
-                (i + 1) * 32,
-            ).unwrap();
-        }
-        for (i, field) in fields.iter().enumerate() {
-            let next_field = fields.get(i + 1);
+        let decode_param_macros: TokenStream = fields
+            .iter()
+            .enumerate()
+            .map(|(i, field)| {
+                let field_kind_marker: syn::Ident = syn::parse_str(match field.is_array_kind() {
+                    true => "bytes_array",
+                    false => "bytes",
+                }).unwrap();
 
-            let field_kind = match field.is_array_kind() {
-                true => "bytes_array",
-                false => "bytes",
-            };
-            write!(
-                fn_body,
-                "decode_param!({0}; bytes, {1}, {1}_offset",
-                field_kind,
-                field.name.to_snake_case(),
-            ).unwrap();
-            if let Some(next_field) = next_field {
-                write!(fn_body, ",{0}_offset", next_field.name.to_snake_case(),).unwrap();
+                let field_ident = field.field_ident();
+                let offset_ident: syn::Ident =
+                    syn::parse_str(&format!("{}_offset", field.name.to_snake_case())).unwrap();
+
+                let next_field = fields.get(i + 1);
+                let tokens: TokenStream = match next_field {
+                    Some(next_field) => {
+                        let next_offset_ident: syn::Ident =
+                            syn::parse_str(&format!("{}_offset", next_field.name.to_snake_case()))
+                                .unwrap();
+                        parse_quote! {
+                            decode_param!(#field_kind_marker; bytes, #field_ident, #offset_ident, #next_offset_ident);
+                        }
+                    }
+                    None => {
+                        parse_quote! {
+                            decode_param!(#field_kind_marker; bytes, #field_ident, #offset_ident);
+                        }
+                    }
+                };
+                tokens
+            })
+            .collect();
+
+        let wrap_option_fields: TokenStream = fields
+            .iter()
+            .filter_map(|field| {
+                if field.required || field.is_array_kind() {
+                    return None;
+                }
+                let field_ident = field.field_ident();
+                let tokens: TokenStream = parse_quote! {
+                    let #field_ident: Option<Vec<u8>> = to_option_bytes(#field_ident);
+                };
+                Some(tokens)
+            })
+            .collect();
+
+        let field_idents: Vec<_> = fields.iter().map(|n| n.field_ident()).collect();
+        let constructor: TokenStream = parse_quote! {
+            Self {
+                #(#field_idents),*
             }
-            write!(fn_body, ");\n",).unwrap();
-        }
-        for field in fields.iter() {
-            if field.required || field.is_array_kind() {
-                continue;
-            }
+        };
 
-            write!(
-                fn_body,
-                "let {0}: Option<Vec<u8>> = to_option_bytes({0});\n",
-                field.name.to_snake_case()
-            ).unwrap();
-        }
-
-        write!(
-            fn_body,
-            "
-                    Self {{
-                ",
-        ).unwrap();
-        for field in fields.iter() {
-            write!(fn_body, "{0},\n", field.name.to_snake_case()).unwrap();
-        }
-        write!(
-            fn_body,
-            "
-                    }}
-                ",
-        ).unwrap();
-
-        let fn_body_tokens: TokenStream =
-            syn::parse_str(std::str::from_utf8(&fn_body.into_inner()).unwrap()).unwrap();
         let kind_name_ty: syn::Type = syn::parse_str(kind_name).unwrap();
         let trait_impl: TokenStream = parse_quote! {
             impl FromABIV2Response for #kind_name_ty {
                 fn from_abiv2(bytes: &[u8]) -> Self {
-                    #fn_body_tokens
+                    #decode_offset_macros
+                    #decode_param_macros
+                    #wrap_option_fields
+
+                    #constructor
                 }
             }
         };
