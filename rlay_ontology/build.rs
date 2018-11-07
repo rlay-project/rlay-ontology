@@ -115,78 +115,68 @@ mod main {
     }
 
     fn write_impl_serialize<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
-        write!(
-            writer,
-            "
-                impl ::serde::Serialize for {0} {{
-                    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-                    where
-                        S: ::serde::Serializer,
-                    {{
-                        #[derive(Serialize)]
-                        #[allow(non_snake_case)]
-                        struct SerializeHelper<'a> {{
-                            pub cid: Option<HexString<'a>>,
-            ",
-            kind_name
-        ).unwrap();
-        for field in fields.iter() {
-            if field.is_array_kind() {
-                write!(writer, "pub {0}: Vec<HexString<'a>>,\n", field.name).unwrap();
-            } else {
-                if field.required {
-                    write!(writer, "pub {0}: HexString<'a>,\n", field.name).unwrap();
-                } else {
-                    write!(writer, "pub {0}: Option<HexString<'a>>,\n", field.name).unwrap();
+        let helper_fields: TokenStream = fields
+            .iter()
+            .map(|field| {
+                let field_ident: syn::Ident = syn::parse_str(&field.name).unwrap();
+                let tokens: TokenStream = match field.is_array_kind() {
+                    true => parse_quote!(pub #field_ident: Vec<HexString<'a>>,),
+                    false => match field.required {
+                        true => parse_quote!(pub #field_ident: HexString<'a>,),
+                        false => parse_quote!(pub #field_ident: Option<HexString<'a>>,),
+                    },
+                };
+                tokens
+            })
+            .collect();
+
+        let wrap_helper_fields: TokenStream = fields
+            .iter()
+            .map(|field| {
+                let helper_field_ident: syn::Ident = syn::parse_str(&field.name).unwrap();
+                let field_ident: syn::Ident = syn::parse_str(&field.name.to_snake_case()).unwrap();
+                let tokens: TokenStream = match field.is_array_kind() {
+                    true => {
+                        parse_quote!(#helper_field_ident: self.#field_ident.iter().map(|n| HexString::wrap(n)).collect(),)
+                    }
+                    false => match field.required {
+                        true => {
+                            parse_quote!(#helper_field_ident: HexString::wrap(&self.#field_ident),)
+                        }
+                        false => {
+                            parse_quote!(#helper_field_ident: HexString::wrap_option(self.#field_ident.as_ref()),)
+                        }
+                    },
+                };
+                tokens
+            })
+            .collect();
+
+        let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+        let trait_impl: TokenStream = parse_quote!{
+            impl ::serde::Serialize for #kind_ty {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: ::serde::Serializer,
+                {
+                    #[derive(Serialize)]
+                    #[allow(non_snake_case)]
+                    struct SerializeHelper<'a> {
+                        pub cid: Option<HexString<'a>>,
+                        #helper_fields
+                    }
+
+                    let cid_option = self.to_cid().ok().map(|n| n.to_bytes());
+                    let ext = SerializeHelper {
+                        cid: HexString::wrap_option(cid_option.as_ref()),
+                        #wrap_helper_fields
+                    };
+
+                    Ok(try!(ext.serialize(serializer)))
                 }
             }
-        }
-        write!(
-            writer,
-            "
-                }}
-
-                let cid_option = self.to_cid().ok().map(|n| n.to_bytes());
-                let ext = SerializeHelper {{
-                    cid: HexString::wrap_option(cid_option.as_ref()),
-            "
-        ).unwrap();
-        for field in fields.iter() {
-            if field.is_array_kind() {
-                write!(
-                    writer,
-                    "{0}: self.{1}.iter().map(|n| HexString::wrap(n)).collect(),\n",
-                    field.name,
-                    field.name.to_snake_case(),
-                ).unwrap();
-            } else {
-                if field.required {
-                    write!(
-                        writer,
-                        "{0}: HexString::wrap(&self.{1}),\n",
-                        field.name,
-                        field.name.to_snake_case(),
-                    ).unwrap();
-                } else {
-                    write!(
-                        writer,
-                        "{0}: HexString::wrap_option(self.{1}.as_ref()),\n",
-                        field.name,
-                        field.name.to_snake_case(),
-                    ).unwrap();
-                }
-            }
-        }
-        write!(
-            writer,
-            "
-                        }};
-
-                        Ok(try!(ext.serialize(serializer)))
-                    }}
-                }}
-            "
-        ).unwrap();
+        };
+        write!(writer, "{}", trait_impl).unwrap();
     }
 
     fn write_impl_deserialize<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
