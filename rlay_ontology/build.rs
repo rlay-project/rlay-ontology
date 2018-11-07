@@ -90,10 +90,6 @@ mod main {
             ).unwrap();
             // impl ToCid
             write!(out_file, "impl_to_cid!({});\n", kind_name).unwrap();
-            // impl ::serde::Serialize
-            write_impl_serialize(&mut out_file, kind_name, &fields);
-            // impl ::serde::Deserialize
-            write_impl_deserialize(&mut out_file, kind_name, &fields);
 
             write!(
                 out_file,
@@ -114,229 +110,13 @@ mod main {
         write_entity(&mut out_file, kind_names.clone());
     }
 
-    fn write_impl_serialize<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
-        let helper_fields: TokenStream = fields
-            .iter()
-            .map(|field| {
-                let field_ident: syn::Ident = syn::parse_str(&field.name).unwrap();
-                let tokens: TokenStream = match field.is_array_kind() {
-                    true => parse_quote!(pub #field_ident: Vec<HexString<'a>>,),
-                    false => match field.required {
-                        true => parse_quote!(pub #field_ident: HexString<'a>,),
-                        false => parse_quote!(pub #field_ident: Option<HexString<'a>>,),
-                    },
-                };
-                tokens
-            })
-            .collect();
-
-        let wrap_helper_fields: TokenStream = fields
-            .iter()
-            .map(|field| {
-                let helper_field_ident: syn::Ident = syn::parse_str(&field.name).unwrap();
-                let field_ident: syn::Ident = syn::parse_str(&field.name.to_snake_case()).unwrap();
-                let tokens: TokenStream = match field.is_array_kind() {
-                    true => {
-                        parse_quote!(#helper_field_ident: self.#field_ident.iter().map(|n| HexString::wrap(n)).collect(),)
-                    }
-                    false => match field.required {
-                        true => {
-                            parse_quote!(#helper_field_ident: HexString::wrap(&self.#field_ident),)
-                        }
-                        false => {
-                            parse_quote!(#helper_field_ident: HexString::wrap_option(self.#field_ident.as_ref()),)
-                        }
-                    },
-                };
-                tokens
-            })
-            .collect();
-
-        let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
-        let trait_impl: TokenStream = parse_quote!{
-            impl ::serde::Serialize for #kind_ty {
-                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-                where
-                    S: ::serde::Serializer,
-                {
-                    #[derive(Serialize)]
-                    #[allow(non_snake_case)]
-                    struct SerializeHelper<'a> {
-                        pub cid: Option<HexString<'a>>,
-                        #helper_fields
-                    }
-
-                    let cid_option = self.to_cid().ok().map(|n| n.to_bytes());
-                    let ext = SerializeHelper {
-                        cid: HexString::wrap_option(cid_option.as_ref()),
-                        #wrap_helper_fields
-                    };
-
-                    Ok(try!(ext.serialize(serializer)))
-                }
-            }
-        };
-        write!(writer, "{}", trait_impl).unwrap();
-    }
-
-    fn write_impl_deserialize<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
-        let field_names: Vec<String> = fields.iter().map(|n| n.name.clone()).collect();
-        let field_names_const_decl: TokenStream = syn::parse_str(&format!(
-            "const FIELDS: &'static [&'static str] = &{:?};",
-            field_names
-        )).unwrap();
-
-        // intializes a empty Option variable for each field
-        let initialize_empty_fields: TokenStream = fields
-            .iter()
-            .map(|field| {
-                let field_ident = field.field_ident();
-                let stmt: TokenStream = match field.is_array_kind() {
-                    true => {
-                        parse_quote! {
-                            let mut #field_ident: Option<Vec<String>> = None;
-                        }
-                    }
-                    false => {
-                        parse_quote! {
-                                    let mut #field_ident: Option<String> = None;
-                        }
-                    }
-                };
-                stmt
-            })
-            .collect();
-
-        // tries to extract set the field variable if the field exists in the map
-        let field_names_raw: Vec<String> = fields.iter().map(|n| n.name.clone()).collect();
-        let field_names_raw2 = field_names_raw.clone();
-        let field_names_snake: Vec<syn::Ident> = fields
-            .iter()
-            .map(|n| syn::parse_str(&n.name.to_snake_case()).unwrap())
-            .collect();
-        let field_names_snake2 = field_names_snake.clone();
-        let extract_keys_loop: TokenStream = parse_quote! {
-            loop {
-                let key = map.next_key::<String>()?;
-                match key {
-                    #(
-                        Some(ref key) if key == #field_names_raw => {
-                            if #field_names_snake.is_some() {{
-                                return Err(de::Error::duplicate_field(#field_names_raw2));
-                            }}
-                            #field_names_snake2 = Some(map.next_value()?);
-                        }
-                     )*
-                    Some(ref unknown) => {
-                        return Err(de::Error::unknown_field(unknown, FIELDS))
-                    }
-                    None => break,
-                }
-            }
-        };
-
-        // applies appropiate deserialize call to each field accoring to type
-        let field_deserialize_calls: TokenStream = fields
-            .iter()
-            .map(|field| {
-                let field_name_raw = &field.name;
-                let field_name_snake: syn::Ident =
-                    syn::parse_str(&field.name.to_snake_case()).unwrap();
-
-                let field_deserialize_tokens: TokenStream = match field.is_array_kind() {
-                    true => {
-                        parse_quote!{
-                            let #field_name_snake = #field_name_snake
-                                .unwrap_or(Vec::new())
-                                .into_iter()
-                                .map(|n| {{
-                                    n[2..].from_hex().map_err(|_| {{
-                                        de::Error::invalid_value(
-                                            de::Unexpected::Other("invalid hexstring"),
-                                            &"hexstring",
-                                        )
-                                    }})
-                                }})
-                                .collect::<Result<_, _>>()?;
-                        }
-                    }
-                    false => {
-                        let mut tokens = parse_quote!{
-                            let #field_name_snake = #field_name_snake
-                                .map(|n| {{
-                                    n[2..].from_hex().map_err(|_| {{
-                                        de::Error::invalid_value(
-                                            de::Unexpected::Other("invalid hexstring"),
-                                            &"hexstring",
-                                        )
-                                    }})
-                                }}).map_or(Ok(None), |v| v.map(Some))?;
-                        };
-                        if field.required {
-                            tokens = parse_quote!{
-                                #tokens
-
-                                let #field_name_snake = #field_name_snake.ok_or(de::Error::missing_field(#field_name_raw))?;
-                            }
-                        }
-                        tokens
-                    }
-                };
-                field_deserialize_tokens
-            })
-            .collect();
-
-        let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
-        let field_idents: Vec<_> = fields.iter().map(|n| n.field_ident()).collect();
-        let constructor_call: TokenStream = parse_quote! {
-            Ok(#kind_ty {
-                #(#field_idents),
-                *
-            })
-        };
-
-        let expecting_msg = format!("struct {}", kind_name);
-        let trait_impl: TokenStream = parse_quote! {
-            impl<'de> Deserialize<'de> for #kind_ty {
-                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-                    where D: Deserializer<'de>,
-                {
-                    struct ThisEntityVisitor;
-
-                    #field_names_const_decl
-
-                    impl<'de> Visitor<'de> for ThisEntityVisitor {
-                        type Value = #kind_ty;
-
-                        fn expecting(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                            formatter.write_str(#expecting_msg)
-                        }
-
-                        fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
-                            where V: MapAccess<'de>,
-                        {
-                            #initialize_empty_fields
-                            #extract_keys_loop
-                            #field_deserialize_calls
-                            #constructor_call
-
-                        }
-                    }
-                    deserializer.deserialize_struct(#kind_name, FIELDS, ThisEntityVisitor)
-                }
-            }
-        };
-
-        write!(writer, "{}", trait_impl).unwrap();
-    }
-
     fn write_entity_kind<W: Write>(writer: &mut W, kind_names: Vec<String>) {
         let variants = kind_names_types(&kind_names);
         // EntityKind
         {
             let variants = variants.clone();
             let type_impl: TokenStream = parse_quote! {
-                #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+                #[derive(Debug, Clone, PartialEq)]
                 pub enum EntityKind {
                     #(#variants),
                     *
@@ -476,7 +256,14 @@ mod web3 {
 
         // impl FromABIV2Response
         for raw_kind in kinds {
+            let kind = raw_kind.as_object().unwrap();
+
+            let kind_name = kind["name"].as_str().unwrap();
+
+            let fields: Vec<Field> = serde_json::from_value(kind["fields"].clone()).unwrap();
+
             write_entity_impl_from_abiv2_response(&mut out_file, raw_kind);
+            write_variant_format_web3(&mut out_file, kind_name, &fields);
         }
 
         let kind_names: Vec<String> = kinds
@@ -486,7 +273,7 @@ mod web3 {
                 kind["name"].as_str().unwrap().to_owned()
             })
             .collect();
-        write_entity_web3_format(&mut out_file, kind_names);
+        write_entity_format_web3(&mut out_file, kind_names);
     }
 
     fn write_entity_impl_from_abiv2_response<W: Write>(writer: &mut W, raw_kind: &Value) {
@@ -578,18 +365,22 @@ mod web3 {
         write!(writer, "{}", trait_impl,).unwrap();
     }
 
-    fn write_entity_web3_format<W: Write>(writer: &mut W, kind_names: Vec<String>) {
+    fn write_entity_format_web3<W: Write>(writer: &mut W, kind_names: Vec<String>) {
         let variants = kind_names_types(&kind_names);
+        let wrapper_variants: Vec<syn::Type> = kind_names
+            .iter()
+            .map(|n| syn::parse_str(&format!("{}FormatWeb3", n)).unwrap())
+            .collect();
 
-        // EntityWeb3Format
+        // EntityFormatWeb3
         {
             let variants = variants.clone();
-            let variants2 = variants.clone();
+            let wrapper_variants = wrapper_variants.clone();
             let type_impl: TokenStream = parse_quote! {
                 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
                 #[serde(tag = "type")]
-                pub enum EntityWeb3Format {
-                    #(#variants(#variants2)),
+                pub enum EntityFormatWeb3 {
+                    #(#variants(#wrapper_variants)),
                     *
                 }
             };
@@ -600,10 +391,10 @@ mod web3 {
             let variants = variants.clone();
             let variants2 = variants.clone();
             let from_impl: TokenStream = parse_quote! {
-                impl From<Entity> for EntityWeb3Format {
+                impl From<Entity> for EntityFormatWeb3 {
                     fn from(original: Entity) -> Self {
                         match original {
-                            #(Entity::#variants(ent) => EntityWeb3Format::#variants2(ent)),
+                            #(Entity::#variants(ent) => EntityFormatWeb3::#variants2(ent.into())),
                             *
                         }
                     }
@@ -616,10 +407,10 @@ mod web3 {
             let variants = variants.clone();
             let variants2 = variants.clone();
             let into_impl: TokenStream = parse_quote! {
-                impl Into<Entity> for EntityWeb3Format {
+                impl Into<Entity> for EntityFormatWeb3 {
                     fn into(self) -> Entity {
                         match self {
-                            #(EntityWeb3Format::#variants(ent) => Entity::#variants2(ent)),
+                            #(EntityFormatWeb3::#variants(ent) => Entity::#variants2(ent.into())),
                             *
                         }
                     }
@@ -627,5 +418,261 @@ mod web3 {
             };
             write!(writer, "{}", into_impl).unwrap();
         }
+    }
+
+    fn write_variant_format_web3<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
+        write_format_web3_wrapper(writer, kind_name, fields);
+        write_format_web3_impl_serialize(writer, kind_name, fields);
+        write_format_web3_impl_deserialize(writer, kind_name, fields);
+    }
+
+    fn write_format_web3_wrapper<W: Write>(writer: &mut W, kind_name: &str, _fields: &[Field]) {
+        // Wrapper
+        let wrapper_ty: syn::Type = syn::parse_str(&format!("{}FormatWeb3", kind_name)).unwrap();
+        let inner_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+        let wrapper_struct: TokenStream = parse_quote! {
+            #[derive(Debug, Clone, PartialEq)]
+            pub struct #wrapper_ty {
+                inner: #inner_ty
+            }
+        };
+        write!(writer, "{}", wrapper_struct);
+        // From
+        {
+            let trait_impl: TokenStream = parse_quote! {
+                impl From<#inner_ty> for #wrapper_ty {
+                    fn from(original: #inner_ty) -> Self {
+                        Self {
+                            inner: original
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", trait_impl);
+        }
+        // Into
+        {
+            let trait_impl: TokenStream = parse_quote! {
+                impl Into<#inner_ty> for #wrapper_ty {
+                    fn into(self) -> #inner_ty {
+                        self.inner
+                    }
+                }
+            };
+            write!(writer, "{}", trait_impl);
+        }
+    }
+
+    fn write_format_web3_impl_serialize<W: Write>(
+        writer: &mut W,
+        kind_name: &str,
+        fields: &[Field],
+    ) {
+        let helper_fields: TokenStream = fields
+            .iter()
+            .map(|field| {
+                let field_ident: syn::Ident = syn::parse_str(&field.name).unwrap();
+                let tokens: TokenStream = match (field.is_array_kind(), field.required) {
+                    (true, _) => parse_quote!(pub #field_ident: Vec<HexString<'a>>,),
+                    (false, true) => parse_quote!(pub #field_ident: HexString<'a>,),
+                    (false, false) => parse_quote!(pub #field_ident: Option<HexString<'a>>,),
+                };
+                tokens
+            })
+            .collect();
+
+        let wrap_helper_fields: TokenStream = fields
+            .iter()
+            .map(|field| {
+                let helper_field_ident: syn::Ident = syn::parse_str(&field.name).unwrap();
+                let field_ident: syn::Ident = syn::parse_str(&field.name.to_snake_case()).unwrap();
+                let tokens: TokenStream = match (field.is_array_kind(), field.required) {
+                    (true, _) => {
+                        parse_quote!(#helper_field_ident: self.inner.#field_ident.iter().map(|n| HexString::wrap(n)).collect(),)
+                    }
+                    (false, true) => {
+                        parse_quote!(#helper_field_ident: HexString::wrap(&self.inner.#field_ident),)
+                    }
+                    (false, false) => {
+                        parse_quote!(#helper_field_ident: HexString::wrap_option(self.inner.#field_ident.as_ref()),)
+                    }
+                };
+                tokens
+            })
+            .collect();
+
+        let wrapper_ty: syn::Type = syn::parse_str(&format!("{}FormatWeb3", kind_name)).unwrap();
+        let trait_impl: TokenStream = parse_quote!{
+            impl ::serde::Serialize for #wrapper_ty {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: ::serde::Serializer,
+                {
+                    #[derive(Serialize)]
+                    #[allow(non_snake_case)]
+                    struct SerializeHelper<'a> {
+                        pub cid: Option<HexString<'a>>,
+                        #helper_fields
+                    }
+
+                    let cid_option = self.inner.to_cid().ok().map(|n| n.to_bytes());
+                    let ext = SerializeHelper {
+                        cid: HexString::wrap_option(cid_option.as_ref()),
+                        #wrap_helper_fields
+                    };
+
+                    Ok(try!(ext.serialize(serializer)))
+                }
+            }
+        };
+        write!(writer, "{}", trait_impl).unwrap();
+    }
+
+    fn write_format_web3_impl_deserialize<W: Write>(
+        writer: &mut W,
+        kind_name: &str,
+        fields: &[Field],
+    ) {
+        let field_names: Vec<String> = fields.iter().map(|n| n.name.clone()).collect();
+        let field_names_const_decl: TokenStream = syn::parse_str(&format!(
+            "const FIELDS: &'static [&'static str] = &{:?};",
+            field_names
+        )).unwrap();
+
+        // intializes a empty Option variable for each field
+        let initialize_empty_fields: TokenStream = fields
+            .iter()
+            .map(|field| {
+                let field_ident = field.field_ident();
+                let stmt: TokenStream = match field.is_array_kind() {
+                    true => parse_quote!(let mut #field_ident: Option<Vec<String>> = None;),
+                    false => parse_quote!(let mut #field_ident: Option<String> = None;),
+                };
+                stmt
+            })
+            .collect();
+
+        // tries to extract set the field variable if the field exists in the map
+        let field_names_raw: Vec<String> = fields.iter().map(|n| n.name.clone()).collect();
+        let field_names_raw2 = field_names_raw.clone();
+        let field_names_snake: Vec<syn::Ident> = fields
+            .iter()
+            .map(|n| syn::parse_str(&n.name.to_snake_case()).unwrap())
+            .collect();
+        let field_names_snake2 = field_names_snake.clone();
+        let extract_keys_loop: TokenStream = parse_quote! {
+            loop {
+                let key = map.next_key::<String>()?;
+                match key {
+                    #(
+                        Some(ref key) if key == #field_names_raw => {
+                            if #field_names_snake.is_some() {{
+                                return Err(de::Error::duplicate_field(#field_names_raw2));
+                            }}
+                            #field_names_snake2 = Some(map.next_value()?);
+                        }
+                     )*
+                    Some(ref unknown) => {
+                        return Err(de::Error::unknown_field(unknown, FIELDS))
+                    }
+                    None => break,
+                }
+            }
+        };
+
+        // applies appropiate deserialize call to each field accoring to type
+        let field_deserialize_calls: TokenStream = fields
+            .iter()
+            .map(|field| {
+                let field_name_raw = &field.name;
+                let field_name_snake: syn::Ident =
+                    syn::parse_str(&field.name.to_snake_case()).unwrap();
+
+                let field_deserialize_tokens: TokenStream = match field.is_array_kind() {
+                    true => {
+                        parse_quote!{
+                            let #field_name_snake = #field_name_snake
+                                .unwrap_or(Vec::new())
+                                .into_iter()
+                                .map(|n| {{
+                                    n[2..].from_hex().map_err(|_| {{
+                                        de::Error::invalid_value(
+                                            de::Unexpected::Other("invalid hexstring"),
+                                            &"hexstring",
+                                        )
+                                    }})
+                                }})
+                                .collect::<Result<_, _>>()?;
+                        }
+                    }
+                    false => {
+                        let mut tokens = parse_quote!{
+                            let #field_name_snake = #field_name_snake
+                                .map(|n| {{
+                                    n[2..].from_hex().map_err(|_| {{
+                                        de::Error::invalid_value(
+                                            de::Unexpected::Other("invalid hexstring"),
+                                            &"hexstring",
+                                        )
+                                    }})
+                                }}).map_or(Ok(None), |v| v.map(Some))?;
+                        };
+                        if field.required {
+                            tokens = parse_quote!{
+                                #tokens
+
+                                let #field_name_snake = #field_name_snake.ok_or(de::Error::missing_field(#field_name_raw))?;
+                            }
+                        }
+                        tokens
+                    }
+                };
+                field_deserialize_tokens
+            })
+            .collect();
+
+        let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+        let wrapper_ty: syn::Type = syn::parse_str(&format!("{}FormatWeb3", kind_name)).unwrap();
+        let field_idents: Vec<_> = fields.iter().map(|n| n.field_ident()).collect();
+        let constructor_call: TokenStream = parse_quote! {
+            Ok(#kind_ty {
+                #(#field_idents),
+                *
+            })
+        };
+
+        let expecting_msg = format!("struct {}", kind_name);
+        let trait_impl: TokenStream = parse_quote! {
+            impl<'de> Deserialize<'de> for #wrapper_ty {
+                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                    where D: Deserializer<'de>,
+                {
+                    struct ThisEntityVisitor;
+
+                    #field_names_const_decl
+
+                    impl<'de> Visitor<'de> for ThisEntityVisitor {
+                        type Value = #kind_ty;
+
+                        fn expecting(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                            formatter.write_str(#expecting_msg)
+                        }
+
+                        fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
+                            where V: MapAccess<'de>,
+                        {
+                            #initialize_empty_fields
+                            #extract_keys_loop
+                            #field_deserialize_calls
+                            #constructor_call
+
+                        }
+                    }
+                    deserializer.deserialize_struct(#kind_name, FIELDS, ThisEntityVisitor).map(|n| n.into())
+                }
+            }
+        };
+
+        write!(writer, "{}", trait_impl).unwrap();
     }
 }

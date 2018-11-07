@@ -16,9 +16,14 @@ extern crate serde_derive;
 extern crate web3;
 
 use std::io::Cursor;
-use cid::{Cid, Codec, Error as CidError, ToCid, Version};
+use cid::{Cid, Codec, Error as CidError, Version};
 use integer_encoding::VarIntReader;
-use std::collections::BTreeMap;
+
+pub mod prelude {
+    pub use ontology::*;
+    #[cfg(feature = "web3_compat")]
+    pub use ontology::web3::*;
+}
 
 // Include the `items` module, which is generated from items.proto.
 pub mod ontology {
@@ -26,9 +31,10 @@ pub mod ontology {
     use multihash::Hash;
     use prost::Message;
     use cid::{Cid, Codec, Error as CidError, ToCid, Version};
-    use rustc_hex::{FromHex, ToHex};
-
+    use rustc_hex::ToHex;
     use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
+    #[cfg(feature = "web3_compat")]
+    use self::web3::{FromABIV2Response, FromABIV2ResponseHinted};
 
     pub trait Canonicalize {
         fn canonicalize(&mut self);
@@ -114,16 +120,15 @@ pub mod ontology {
     }
 
     pub use self::custom::*;
-    #[cfg(feature = "web3_compat")]
-    pub use self::web3::*;
 
     #[cfg(feature = "web3_compat")]
-    mod web3 {
+    pub mod web3 {
         use super::*;
+        use rustc_hex::FromHex;
 
         use web3::types::U256;
 
-        pub trait Web3Format<'a> {
+        pub trait FormatWeb3<'a> {
             type Formatted: serde::Deserialize<'a> + serde::Serialize;
 
             fn to_web3_format(self) -> Self::Formatted;
@@ -206,11 +211,11 @@ pub mod ontology {
 
         include!(concat!(env!("OUT_DIR"), "/rlay.ontology.web3_applied.rs"));
 
-        impl<'a> Web3Format<'a> for Entity {
-            type Formatted = EntityWeb3Format;
+        impl<'a> FormatWeb3<'a> for Entity {
+            type Formatted = EntityFormatWeb3;
 
             fn to_web3_format(self) -> Self::Formatted {
-                EntityWeb3Format::from(self)
+                EntityFormatWeb3::from(self)
             }
 
             fn from_web3_format(formatted: Self::Formatted) -> Self {
@@ -266,8 +271,6 @@ pub mod ontology {
     }
 }
 
-pub const RDFS_LABEL: &str = "http://www.w3.org/2000/01/rdf-schema#label";
-
 #[derive(Fail, Debug)]
 pub enum HashError {
     #[fail(display = "Multihash error: {}", error)] MultihashError { error: multihash::Error },
@@ -283,38 +286,6 @@ impl From<multihash::Error> for HashError {
 impl From<prost::EncodeError> for HashError {
     fn from(error: prost::EncodeError) -> HashError {
         HashError::EncodingError { error }
-    }
-}
-
-// pub fn create_annotation(iri: String, value: String) -> Result<Annotation, multihash::Error> {
-// let label_property = encode(Hash::SHA3256, &iri.as_bytes())?;
-// Ok(Annotation::new(&label_property, value))
-// }
-
-// pub fn create_label_annotation(value: String) -> Result<Annotation, multihash::Error> {
-// let label_property = encode(Hash::SHA3256, &RDFS_LABEL.as_bytes())?;
-// Ok(Annotation::new(&label_property, value))
-// }
-
-pub trait ContentAddressableStorage<T> {
-    type Error;
-
-    fn insert_content(&mut self, val: T) -> Result<(), Self::Error>;
-    fn get_content(&self, cid: &Cid) -> Option<&T>;
-}
-
-impl<T: ToCid> ContentAddressableStorage<T> for BTreeMap<String, T> {
-    type Error = CidError;
-
-    fn insert_content(&mut self, val: T) -> Result<(), CidError> {
-        let cid_str = val.to_cid()?.to_string();
-        self.insert(cid_str, val);
-        Ok(())
-    }
-
-    fn get_content(&self, cid: &Cid) -> Option<&T> {
-        let cid_str = cid.to_string();
-        self.get(&cid_str)
     }
 }
 
