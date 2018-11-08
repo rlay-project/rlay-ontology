@@ -1,4 +1,5 @@
 extern crate cid;
+extern crate integer_encoding;
 extern crate itertools;
 extern crate multibase;
 extern crate multihash;
@@ -6,14 +7,17 @@ extern crate prost;
 extern crate rlay_ontology;
 extern crate rustc_hex;
 extern crate serde_cbor;
+extern crate serde_json;
 
 use itertools::Itertools;
 use multibase::{encode as base_encode, Base};
-use rlay_ontology::ontology::{Annotation, Class};
+use rlay_ontology::prelude::*;
 use rustc_hex::FromHex;
+use rustc_hex::ToHex;
 use cid::ToCid;
 use std::collections::BTreeMap;
 use prost::Message;
+use integer_encoding::VarInt;
 
 pub struct AnnotationMap(BTreeMap<Vec<u8>, Annotation>);
 pub struct ClassMap(BTreeMap<Vec<u8>, Class>);
@@ -47,18 +51,29 @@ impl<'a> std::fmt::Display for SolidityBytesChunked<'a> {
 }
 
 pub fn main() {
-    let mut annotation = Annotation::default();
-    annotation.value =
-        "019580031b2088868a58d3aac6d2558a29b3b8cacf3c9788364f57a3470158283121a15dcae0"
-            .from_hex()
-            .unwrap();
-    let serialized = serde_cbor::ser::to_vec_packed(&annotation).unwrap();
+    // let mut annotation = Annotation::default();
+    // annotation.value =
+    // "019580031b2088868a58d3aac6d2558a29b3b8cacf3c9788364f57a3470158283121a15dcae0"
+    // .from_hex()
+    // .unwrap();
+    // let serialized = serde_cbor::ser::to_vec_packed(&annotation).unwrap();
 
-    let mut serialized_pb = Vec::new();
-    annotation.encode(&mut serialized_pb).unwrap();
+    // let mut serialized_pb = Vec::new();
+    // annotation.encode(&mut serialized_pb).unwrap();
 
-    println!("Annotation CBOR: {}", SolidityBytesChunked(&serialized));
-    println!("Annotation PB  : {}", SolidityBytesChunked(&serialized_pb));
+    // println!("Annotation CBOR: {}", SolidityBytesChunked(&serialized));
+    // println!("Annotation PB  : {}", SolidityBytesChunked(&serialized_pb));
+
+    let raw_encoded: Vec<u8> = "0480".from_hex().unwrap();
+    println!("{:?}", raw_encoded);
+    let decoded: u32 = VarInt::decode_var(&raw_encoded).0;
+    println!("Decoded: {}", decoded);
+    println!("Decoded Hex: {:x?}", decoded);
+
+    let raw_value = vec![0xa2, 0x01, 0x41, 0xab, 0x02, 0x41, 0x45];
+    let value: AnnotationFormatCompact = serde_cbor::from_slice(&raw_value).unwrap();
+    let value = Annotation::from_compact_format(value).to_web3_format();
+    println!("{}", serde_json::to_string_pretty(&value).unwrap());
 
     // println!(
     // "{}",

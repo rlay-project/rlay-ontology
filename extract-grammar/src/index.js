@@ -315,6 +315,7 @@ const buildGrammar = parsedGrammar => {
   });
 
   kinds = kinds.map((kind, i) => Object.assign({}, kind, {
+    kindId: i,
     cidPrefix: calculateCidPrefix(i),
     cidPrefixHex: calculateCidPrefixHex(i),
   }));

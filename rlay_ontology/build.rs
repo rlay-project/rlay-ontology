@@ -25,6 +25,7 @@ fn main() {
     prost_build::compile_protos(&["src/ontology.proto"], &["src/"]).unwrap();
     main::build_macros_applied_file("src/intermediate.json", "rlay.ontology.macros_applied.rs");
     web3::build_applied_file("src/intermediate.json", "rlay.ontology.web3_applied.rs");
+    compact::build_file("src/intermediate.json", "rlay.ontology.compact.rs");
 }
 
 #[derive(Deserialize)]
@@ -77,8 +78,6 @@ mod main {
 
             let kind_name = kind["name"].as_str().unwrap();
             let kind_cid_prefix = kind["cidPrefix"].as_u64().unwrap();
-
-            let fields: Vec<Field> = serde_json::from_value(kind["fields"].clone()).unwrap();
 
             // Header line
             write!(out_file, "\n// {}\n", kind_name).unwrap();
@@ -233,6 +232,238 @@ mod main {
     }
 }
 
+fn write_format_variant_wrapper<W: Write>(
+    writer: &mut W,
+    format_suffix: &str,
+    kind_name: &str,
+    _fields: &[Field],
+    write_conversion_trait: bool,
+) {
+    // Wrapper
+    let wrapper_ty: syn::Type =
+        syn::parse_str(&format!("{}Format{}", kind_name, format_suffix)).unwrap();
+    let inner_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+    let wrapper_struct: TokenStream = parse_quote! {
+        #[derive(Debug, Clone, PartialEq)]
+        pub struct #wrapper_ty {
+            inner: #inner_ty
+        }
+    };
+    write!(writer, "{}", wrapper_struct);
+    // From
+    {
+        let trait_impl: TokenStream = parse_quote! {
+            impl From<#inner_ty> for #wrapper_ty {
+                fn from(original: #inner_ty) -> Self {
+                    Self {
+                        inner: original
+                    }
+                }
+            }
+        };
+        write!(writer, "{}", trait_impl);
+    }
+    // Into
+    {
+        let trait_impl: TokenStream = parse_quote! {
+            impl Into<#inner_ty> for #wrapper_ty {
+                fn into(self) -> #inner_ty {
+                    self.inner
+                }
+            }
+        };
+        write!(writer, "{}", trait_impl);
+    }
+    if write_conversion_trait {
+        let conversion_trait: syn::Type =
+            syn::parse_str(&format!("Format{}", format_suffix)).unwrap();
+        let format_suffix_lc = format_suffix.to_lowercase();
+        let to_fn_ident: syn::Ident =
+            syn::parse_str(&format!("to_{}_format", format_suffix_lc)).unwrap();
+        let from_fn_ident: syn::Ident =
+            syn::parse_str(&format!("from_{}_format", format_suffix_lc)).unwrap();
+
+        let trait_impl: TokenStream = parse_quote! {
+            impl<'a> #conversion_trait<'a> for #inner_ty {
+                type Formatted = #wrapper_ty;
+                fn #to_fn_ident(self) -> Self::Formatted {
+                    #wrapper_ty::from(self)
+                }
+
+                fn #from_fn_ident(formatted: Self::Formatted) -> Self {
+                    formatted.into()
+                }
+            }
+        };
+        write!(writer, "{}", trait_impl);
+    }
+}
+
+mod compact {
+    use super::*;
+
+    pub fn build_file(src_path: &str, out_path: &str) {
+        let out_dir = env::var("OUT_DIR").unwrap();
+        let dest_path = Path::new(&out_dir).join(out_path);
+
+        let mut intermediate_file = File::open(src_path).expect("file not found");
+
+        let mut intermediate_contents = String::new();
+        intermediate_file
+            .read_to_string(&mut intermediate_contents)
+            .unwrap();
+        let intermediate: Value = serde_json::from_str(&intermediate_contents).unwrap();
+
+        let mut out_file = File::create(&dest_path).unwrap();
+
+        let kinds = intermediate.as_object().unwrap()["kinds"]
+            .as_array()
+            .unwrap();
+
+        for raw_kind in kinds {
+            let kind = raw_kind.as_object().unwrap();
+            let kind_name = kind["name"].as_str().unwrap();
+            let fields: Vec<Field> = serde_json::from_value(kind["fields"].clone()).unwrap();
+
+            write_variant_format_compact(&mut out_file, kind_name, &fields);
+        }
+    }
+
+    fn write_variant_format_compact<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
+        write_format_variant_wrapper(writer, "Compact", kind_name, fields, true);
+        write_format_compact_impl_serialize(writer, kind_name, fields);
+        write_format_compact_impl_deserialize(writer, kind_name, fields);
+    }
+
+    fn write_format_compact_impl_serialize<W: Write>(
+        writer: &mut W,
+        kind_name: &str,
+        fields: &[Field],
+    ) {
+        let helper_fields: TokenStream = fields
+            .iter()
+            .map(|field| {
+                let field_ident = field.field_ident();
+                let tokens: TokenStream = match (field.is_array_kind(), field.required) {
+                    (true, _) => parse_quote!{
+                        #[serde(skip_serializing_if = "Vec::is_empty")]
+                        pub #field_ident: &'a Vec<Vec<u8>>,
+                    },
+                    (false, true) => parse_quote!(pub #field_ident: &'a Vec<u8>,),
+                    (false, false) => parse_quote!{
+                        #[serde(skip_serializing_if = "Option::is_none")]
+                        pub #field_ident: &'a Option<Vec<u8>>,
+                    },
+                };
+                tokens
+            })
+            .collect();
+
+        let wrap_helper_fields: TokenStream = fields
+            .iter()
+            .map(|field| {
+                let field_ident = field.field_ident();
+                let tokens: TokenStream = parse_quote!(#field_ident: &self.inner.#field_ident,);
+                tokens
+            })
+            .collect();
+
+        let wrapper_ty: syn::Type = syn::parse_str(&format!("{}FormatCompact", kind_name)).unwrap();
+        let trait_impl: TokenStream = parse_quote!{
+            impl ::serde::Serialize for #wrapper_ty {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: ::serde::Serializer,
+                {
+                    #[derive(Serialize)]
+                    #[allow(non_snake_case)]
+                    struct SerializeHelper<'a> {
+                        #helper_fields
+                    }
+
+                    let ext = SerializeHelper {
+                        #wrap_helper_fields
+                    };
+
+                    Ok(try!(ext.serialize(serializer)))
+                }
+            }
+        };
+        write!(writer, "{}", trait_impl).unwrap();
+    }
+
+    fn write_format_compact_impl_deserialize<W: Write>(
+        writer: &mut W,
+        kind_name: &str,
+        fields: &[Field],
+    ) {
+        let helper_fields: TokenStream = fields
+            .iter()
+            .map(|field| {
+                let field_ident = field.field_ident();
+                let stmt: TokenStream = match (field.is_array_kind(), field.required) {
+                    (true, _) => parse_quote!{
+                        #[serde(default, deserialize_with = "nullable_vec")]
+                        #field_ident: Vec<Vec<u8>>,
+                    },
+                    (false, true) => parse_quote!{
+                        #[serde(with = "serde_bytes")]
+                        #field_ident: Vec<u8>,
+                    },
+                    (false, false) => parse_quote!{
+                        #[serde(default)]
+                        #field_ident: Option<Vec<u8>>,
+                    },
+                };
+                stmt
+            })
+            .collect();
+
+        let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+        let wrapper_ty: syn::Type = syn::parse_str(&format!("{}FormatCompact", kind_name)).unwrap();
+        let field_idents: Vec<_> = fields.iter().map(|n| n.field_ident()).collect();
+        let field_idents2 = field_idents.clone();
+        let constructor_call: TokenStream = parse_quote! {
+            Ok(#wrapper_ty {
+                inner: #kind_ty {
+                    #(#field_idents: helper_instance.#field_idents2),
+                    *
+                }
+            })
+        };
+
+        let trait_impl: TokenStream = parse_quote! {
+            impl<'de> Deserialize<'de> for #wrapper_ty {
+                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                    where D: Deserializer<'de>,
+                {
+                    #[derive(Deserialize)]
+                    struct DeserializeHelper {
+                        #helper_fields
+                    }
+
+                    fn nullable_vec<'de, D>(deserializer: D) -> Result<Vec<Vec<u8>>, D::Error>
+                        where D: Deserializer<'de>
+                    {
+                        let opt: Option<Vec<serde_bytes::ByteBuf>> = Option::deserialize(deserializer)?;
+                        let val = opt
+                            .unwrap_or_else(Vec::new)
+                            .into_iter()
+                            .map(|n| (*n).to_owned())
+                            .collect();
+                        Ok(val)
+                    }
+
+                    let helper_instance = DeserializeHelper::deserialize(deserializer)?;
+                    #constructor_call
+                }
+            }
+        };
+
+        write!(writer, "{}", trait_impl).unwrap();
+    }
+}
+
 mod web3 {
     use super::*;
 
@@ -257,9 +488,7 @@ mod web3 {
         // impl FromABIV2Response
         for raw_kind in kinds {
             let kind = raw_kind.as_object().unwrap();
-
             let kind_name = kind["name"].as_str().unwrap();
-
             let fields: Vec<Field> = serde_json::from_value(kind["fields"].clone()).unwrap();
 
             write_entity_impl_from_abiv2_response(&mut out_file, raw_kind);
@@ -421,46 +650,9 @@ mod web3 {
     }
 
     fn write_variant_format_web3<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
-        write_format_web3_wrapper(writer, kind_name, fields);
+        write_format_variant_wrapper(writer, "Web3", kind_name, fields, true);
         write_format_web3_impl_serialize(writer, kind_name, fields);
         write_format_web3_impl_deserialize(writer, kind_name, fields);
-    }
-
-    fn write_format_web3_wrapper<W: Write>(writer: &mut W, kind_name: &str, _fields: &[Field]) {
-        // Wrapper
-        let wrapper_ty: syn::Type = syn::parse_str(&format!("{}FormatWeb3", kind_name)).unwrap();
-        let inner_ty: syn::Type = syn::parse_str(kind_name).unwrap();
-        let wrapper_struct: TokenStream = parse_quote! {
-            #[derive(Debug, Clone, PartialEq)]
-            pub struct #wrapper_ty {
-                inner: #inner_ty
-            }
-        };
-        write!(writer, "{}", wrapper_struct);
-        // From
-        {
-            let trait_impl: TokenStream = parse_quote! {
-                impl From<#inner_ty> for #wrapper_ty {
-                    fn from(original: #inner_ty) -> Self {
-                        Self {
-                            inner: original
-                        }
-                    }
-                }
-            };
-            write!(writer, "{}", trait_impl);
-        }
-        // Into
-        {
-            let trait_impl: TokenStream = parse_quote! {
-                impl Into<#inner_ty> for #wrapper_ty {
-                    fn into(self) -> #inner_ty {
-                        self.inner
-                    }
-                }
-            };
-            write!(writer, "{}", trait_impl);
-        }
     }
 
     fn write_format_web3_impl_serialize<W: Write>(

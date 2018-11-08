@@ -13,6 +13,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 0,
       "cidPrefix": 49152,
       "cidPrefixHex": "808003"
     },
@@ -29,6 +30,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 1,
       "cidPrefix": 49153,
       "cidPrefixHex": "818003"
     },
@@ -45,6 +47,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 2,
       "cidPrefix": 49154,
       "cidPrefixHex": "828003"
     },
@@ -66,6 +69,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 3,
       "cidPrefix": 49155,
       "cidPrefixHex": "838003"
     },
@@ -82,6 +86,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 4,
       "cidPrefix": 49156,
       "cidPrefixHex": "848003"
     },
@@ -98,6 +103,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 5,
       "cidPrefix": 49157,
       "cidPrefixHex": "858003"
     },
@@ -114,6 +120,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 6,
       "cidPrefix": 49158,
       "cidPrefixHex": "868003"
     },
@@ -130,6 +137,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 7,
       "cidPrefix": 49159,
       "cidPrefixHex": "878003"
     },
@@ -146,6 +154,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 8,
       "cidPrefix": 49160,
       "cidPrefixHex": "888003"
     },
@@ -162,6 +171,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 9,
       "cidPrefix": 49161,
       "cidPrefixHex": "898003"
     },
@@ -178,6 +188,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 10,
       "cidPrefix": 49162,
       "cidPrefixHex": "8a8003"
     },
@@ -194,6 +205,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 11,
       "cidPrefix": 49163,
       "cidPrefixHex": "8b8003"
     },
@@ -210,6 +222,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 12,
       "cidPrefix": 49164,
       "cidPrefixHex": "8c8003"
     },
@@ -226,6 +239,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 13,
       "cidPrefix": 49165,
       "cidPrefixHex": "8d8003"
     },
@@ -242,6 +256,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 14,
       "cidPrefix": 49166,
       "cidPrefixHex": "8e8003"
     },
@@ -258,6 +273,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 15,
       "cidPrefix": 49167,
       "cidPrefixHex": "8f8003"
     },
@@ -274,6 +290,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 16,
       "cidPrefix": 49168,
       "cidPrefixHex": "908003"
     },
@@ -290,6 +307,7 @@
         }
       ],
       "expressionKind": "ClassExpression",
+      "kindId": 17,
       "cidPrefix": 49169,
       "cidPrefixHex": "918003"
     },
@@ -306,6 +324,7 @@
         }
       ],
       "expressionKind": "ObjectPropertyExpression",
+      "kindId": 18,
       "cidPrefix": 49170,
       "cidPrefixHex": "928003"
     },
@@ -322,6 +341,7 @@
         }
       ],
       "expressionKind": "ObjectPropertyExpression",
+      "kindId": 19,
       "cidPrefix": 49171,
       "cidPrefixHex": "938003"
     },
@@ -338,6 +358,7 @@
         }
       ],
       "expressionKind": "DataPropertyExpression",
+      "kindId": 20,
       "cidPrefix": 49172,
       "cidPrefixHex": "948003"
     },
@@ -359,6 +380,7 @@
           "required": true
         }
       ],
+      "kindId": 21,
       "cidPrefix": 49173,
       "cidPrefixHex": "958003"
     },
@@ -370,6 +392,7 @@
           "kind": "Annotation[]"
         }
       ],
+      "kindId": 22,
       "cidPrefix": 49174,
       "cidPrefixHex": "968003"
     },
@@ -381,6 +404,7 @@
           "kind": "Annotation[]"
         }
       ],
+      "kindId": 23,
       "cidPrefix": 49175,
       "cidPrefixHex": "978003"
     },
@@ -402,6 +426,7 @@
           "required": true
         }
       ],
+      "kindId": 24,
       "cidPrefix": 49176,
       "cidPrefixHex": "988003"
     },
@@ -423,6 +448,7 @@
           "required": true
         }
       ],
+      "kindId": 25,
       "cidPrefix": 49177,
       "cidPrefixHex": "998003"
     },
@@ -446,6 +472,7 @@
           "kind": "IRI"
         }
       ],
+      "kindId": 26,
       "cidPrefix": 49178,
       "cidPrefixHex": "9a8003"
     },
@@ -469,6 +496,7 @@
           "kind": "IRI"
         }
       ],
+      "kindId": 27,
       "cidPrefix": 49179,
       "cidPrefixHex": "9b8003"
     },
@@ -492,6 +520,7 @@
           "kind": "IRI"
         }
       ],
+      "kindId": 28,
       "cidPrefix": 49180,
       "cidPrefixHex": "9c8003"
     },
@@ -515,6 +544,7 @@
           "kind": "IRI"
         }
       ],
+      "kindId": 29,
       "cidPrefix": 49181,
       "cidPrefixHex": "9d8003"
     }

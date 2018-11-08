@@ -9,6 +9,7 @@ extern crate prost;
 extern crate prost_derive;
 extern crate rustc_hex;
 extern crate serde;
+extern crate serde_bytes;
 #[macro_use]
 extern crate serde_derive;
 
@@ -21,6 +22,7 @@ use integer_encoding::VarIntReader;
 
 pub mod prelude {
     pub use ontology::*;
+    pub use ontology::compact::*;
     #[cfg(feature = "web3_compat")]
     pub use ontology::web3::*;
 }
@@ -211,17 +213,20 @@ pub mod ontology {
 
         include!(concat!(env!("OUT_DIR"), "/rlay.ontology.web3_applied.rs"));
 
-        impl<'a> FormatWeb3<'a> for Entity {
-            type Formatted = EntityFormatWeb3;
+    }
 
-            fn to_web3_format(self) -> Self::Formatted {
-                EntityFormatWeb3::from(self)
-            }
+    pub mod compact {
+        use super::*;
 
-            fn from_web3_format(formatted: Self::Formatted) -> Self {
-                formatted.into()
-            }
+        pub trait FormatCompact<'a> {
+            type Formatted: serde::Deserialize<'a> + serde::Serialize;
+
+            fn to_compact_format(self) -> Self::Formatted;
+
+            fn from_compact_format(formatted: Self::Formatted) -> Self;
         }
+
+        include!(concat!(env!("OUT_DIR"), "/rlay.ontology.compact.rs"));
     }
 
     mod custom {

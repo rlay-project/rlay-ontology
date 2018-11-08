@@ -10,6 +10,7 @@ path = "src/lib.rs"
 [[example]]
 name = "example_hashes"
 path = "src/bin.rs"
+required-features = ["examples"]
 
 [dependencies]
 prost = "0.3.0"
@@ -25,7 +26,9 @@ serde = "1.0.66"
 serde_derive = "1.0.66"
 rustc-hex = "2.0.1"
 web3 = { version = "0.4.0", optional = true }
-serde_cbor = "0.9.0"
+serde_cbor = { version = "0.9.0", optional = true }
+serde_json = { version = "1", optional = true }
+serde_bytes = "0.10.4"
 
 [build-dependencies]
 prost-build = "0.3.0"
@@ -40,3 +43,5 @@ proc-macro2 = "0.4.20"
 [features]
 default = []
 web3_compat = ["web3"]
+
+examples = ["serde_cbor", "serde_json"]
