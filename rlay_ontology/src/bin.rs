@@ -75,6 +75,13 @@ pub fn main() {
     let value = Annotation::from_compact_format(value).to_web3_format();
     println!("{}", serde_json::to_string_pretty(&value).unwrap());
 
+    let value: AnnotationFormatCompact = serde_cbor::from_slice(&raw_value).unwrap();
+    let value = Annotation::from_compact_format(value);
+    let entity_v0 = EntityV0::Annotation(value);
+    let mut entity_serialized: Vec<u8> = Vec::new();
+    entity_v0.serialize(&mut entity_serialized);
+    println!("{}", SolidityBytes(&entity_serialized));
+
     // println!(
     // "{}",
     // SolidityBytesChunked(

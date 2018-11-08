@@ -26,6 +26,7 @@ fn main() {
     main::build_macros_applied_file("src/intermediate.json", "rlay.ontology.macros_applied.rs");
     web3::build_applied_file("src/intermediate.json", "rlay.ontology.web3_applied.rs");
     compact::build_file("src/intermediate.json", "rlay.ontology.compact.rs");
+    v0::build_file("src/intermediate.json", "rlay.ontology.v0.rs");
 }
 
 #[derive(Deserialize)]
@@ -101,15 +102,21 @@ mod main {
             .iter()
             .map(|raw_kind| {
                 let kind = raw_kind.as_object().unwrap();
-
                 kind["name"].as_str().unwrap().to_owned()
             })
             .collect();
-        write_entity_kind(&mut out_file, kind_names.clone());
+        let kind_ids: Vec<u64> = kinds
+            .iter()
+            .map(|raw_kind| {
+                let kind = raw_kind.as_object().unwrap();
+                kind["kindId"].as_u64().unwrap().to_owned()
+            })
+            .collect();
+        write_entity_kind(&mut out_file, kind_names.clone(), kind_ids.clone());
         write_entity(&mut out_file, kind_names.clone());
     }
 
-    fn write_entity_kind<W: Write>(writer: &mut W, kind_names: Vec<String>) {
+    fn write_entity_kind<W: Write>(writer: &mut W, kind_names: Vec<String>, kind_ids: Vec<u64>) {
         let variants = kind_names_types(&kind_names);
         // EntityKind
         {
@@ -142,9 +149,11 @@ mod main {
         // impl EntityKind
         {
             let kind_names = kind_names.clone();
+            let kind_ids = kind_ids.clone();
             let variants = variants.clone();
             let variants2 = variants.clone();
             let variants3 = variants.clone();
+            let variants4 = variants.clone();
             let trait_impl: TokenStream = parse_quote! {
                 impl EntityKind {
                     pub fn from_name(name: &str) -> Result<Self, ()> {
@@ -157,6 +166,12 @@ mod main {
                     pub fn empty_entity(&self) -> Entity {
                         match self {
                             #(EntityKind::#variants2 => #variants3::default().into()),*
+                        }
+                    }
+
+                    pub fn id(&self) -> u64 {
+                        match self {
+                            #(EntityKind::#variants4 => #kind_ids),*
                         }
                     }
                 }
@@ -347,11 +362,16 @@ mod compact {
                 let tokens: TokenStream = match (field.is_array_kind(), field.required) {
                     (true, _) => parse_quote!{
                         #[serde(skip_serializing_if = "Vec::is_empty")]
+                        // TODO: bytes serialize
                         pub #field_ident: &'a Vec<Vec<u8>>,
                     },
-                    (false, true) => parse_quote!(pub #field_ident: &'a Vec<u8>,),
+                    (false, true) => parse_quote!{
+                        #[serde(with = "serde_bytes")]
+                        pub #field_ident: &'a Vec<u8>,
+                    },
                     (false, false) => parse_quote!{
                         #[serde(skip_serializing_if = "Option::is_none")]
+                        // TODO: bytes serialize
                         pub #field_ident: &'a Option<Vec<u8>>,
                     },
                 };
@@ -412,6 +432,7 @@ mod compact {
                     },
                     (false, false) => parse_quote!{
                         #[serde(default)]
+                        // TODO: bytes serialize
                         #field_ident: Option<Vec<u8>>,
                     },
                 };
@@ -866,5 +887,124 @@ mod web3 {
         };
 
         write!(writer, "{}", trait_impl).unwrap();
+    }
+}
+
+mod v0 {
+    use super::*;
+
+    pub fn build_file(src_path: &str, out_path: &str) {
+        let out_dir = env::var("OUT_DIR").unwrap();
+        let dest_path = Path::new(&out_dir).join(out_path);
+
+        let mut intermediate_file = File::open(src_path).expect("file not found");
+
+        let mut intermediate_contents = String::new();
+        intermediate_file
+            .read_to_string(&mut intermediate_contents)
+            .unwrap();
+        let intermediate: Value = serde_json::from_str(&intermediate_contents).unwrap();
+
+        let mut out_file = File::create(&dest_path).unwrap();
+
+        let kinds = intermediate.as_object().unwrap()["kinds"]
+            .as_array()
+            .unwrap();
+
+        let kind_names: Vec<String> = kinds
+            .iter()
+            .map(|raw_kind| {
+                let kind = raw_kind.as_object().unwrap();
+
+                kind["name"].as_str().unwrap().to_owned()
+            })
+            .collect();
+
+        write_entity(&mut out_file, kind_names);
+    }
+
+    fn write_entity<W: Write>(writer: &mut W, kind_names: Vec<String>) {
+        let variants = kind_names_types(&kind_names);
+
+        // Entity
+        {
+            let variants = variants.clone();
+            let variants2 = variants.clone();
+            let type_impl: TokenStream = parse_quote! {
+                #[derive(Debug, Clone, PartialEq)]
+                pub enum EntityV0 {
+                    #(#variants(#variants2)),
+                    *
+                }
+            };
+            write!(writer, "{}", type_impl).unwrap();
+        }
+        // impl ToCid
+        // {
+        // let variants = variants.clone();
+        // let trait_impl: TokenStream = parse_quote! {
+        // impl ToCid for Entity {
+        // fn to_cid(&self) -> Result<Cid, CidError> {
+        // match &self {
+        // #(Entity::#variants(ent) => ent.to_cid()),
+        // *
+        // }
+        // }
+        // }
+        // };
+        // write!(writer, "{}", trait_impl).unwrap();
+        // }
+        // impl Into<Entity>
+        {
+            let variants = variants.clone();
+            let variants2 = variants.clone();
+            let type_impl: TokenStream = parse_quote! {
+                impl Into<Entity> for EntityV0 {
+                    fn into(self) -> Entity {
+                        match self {
+                            #(EntityV0::#variants(ent) => Entity::#variants2(ent)),
+                            *
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", type_impl).unwrap();
+        }
+        // impl Into<EntityV0>
+        {
+            let variants = variants.clone();
+            let variants2 = variants.clone();
+            let type_impl: TokenStream = parse_quote! {
+                impl Into<EntityV0> for Entity {
+                    fn into(self) -> EntityV0 {
+                        match self {
+                            #(Entity::#variants(ent) => EntityV0::#variants2(ent)),
+                            *
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", type_impl).unwrap();
+        }
+        // impl EntityV0
+        {
+            let trait_impl: TokenStream = parse_quote!{
+                impl EntityV0 {
+                    pub fn serialize<W: ::std::io::Write>(&self, writer: &mut W) {
+                        let version_number = 0;
+                        writer.write_varint(version_number).unwrap();
+
+                        let kind_id = Into::<Entity>::into(self.clone()).kind().id();
+                        writer.write_varint(kind_id).unwrap();
+
+                        match &self {
+                            #(&EntityV0::#variants(ent) => serde_cbor::ser::to_writer_packed(writer, &ent.clone().to_compact_format()).unwrap()),
+                            *
+                        };
+                    }
+                }
+            };
+            write!(writer, "{}", trait_impl).unwrap();
+        }
     }
 }

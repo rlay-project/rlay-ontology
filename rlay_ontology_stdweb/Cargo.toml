@@ -9,7 +9,7 @@ path = "src/web.rs"
 
 [dependencies]
 petgraph = "0.4.11"
-itertools = "0.7.6"
+itertools = "0.7.8"
 stdweb = { version = "0.3.0" }
 log = { version = "0.4.1"}
 hobofan_stdweb_logger = "0.1.0"

@@ -12,6 +12,7 @@ extern crate serde;
 extern crate serde_bytes;
 #[macro_use]
 extern crate serde_derive;
+extern crate varint;
 
 #[cfg(feature = "web3_compat")]
 extern crate web3;
@@ -23,6 +24,7 @@ use integer_encoding::VarIntReader;
 pub mod prelude {
     pub use ontology::*;
     pub use ontology::compact::*;
+    pub use ontology::v0::*;
     #[cfg(feature = "web3_compat")]
     pub use ontology::web3::*;
 }
@@ -124,6 +126,7 @@ pub mod ontology {
     pub use self::custom::*;
 
     #[cfg(feature = "web3_compat")]
+    /// Serialization format compatible with the Web3 ecosystem, specifically the Web3 JSONRPC.
     pub mod web3 {
         use super::*;
         use rustc_hex::FromHex;
@@ -215,6 +218,7 @@ pub mod ontology {
 
     }
 
+    /// Compact serialization format that allows for omitting empty fields.
     pub mod compact {
         use super::*;
 
@@ -229,6 +233,7 @@ pub mod ontology {
         include!(concat!(env!("OUT_DIR"), "/rlay.ontology.compact.rs"));
     }
 
+    /// Hand-written extension traits that expose values common over some of the entity kinds.
     mod custom {
         use super::*;
 
@@ -273,6 +278,15 @@ pub mod ontology {
                 &self.subject
             }
         }
+    }
+
+    /// Serialization format for the canonical v0 cbor-based format.
+    pub mod v0 {
+        use super::*;
+        use ontology::compact::FormatCompact;
+        use integer_encoding::VarIntWriter;
+
+        include!(concat!(env!("OUT_DIR"), "/rlay.ontology.v0.rs"));
     }
 }
 
