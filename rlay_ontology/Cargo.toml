@@ -13,44 +13,41 @@ path = "src/bin.rs"
 required-features = ["examples"]
 
 [dependencies]
-prost = "0.3.0"
-bytes = "0.4.6"
-prost-derive = "0.3.0"
-multihash = "0.8.0"
-cid = "0.2.3"
-itertools = "0.7.6"
-multibase = "0.6.0"
-failure = "0.1.1"
-integer-encoding = "1.0"
-serde = "1.0.66"
-serde_derive = "1.0.66"
-rustc-hex = "2.0.1"
-serde_cbor = "0.9.0"
-serde_json = { version = "1", optional = true }
-varint = { git = "https://github.com/sirkibsirkib/serde_varint" }
-serde_bytes = "0.10.4"
+integer-encoding = { version = "1.0", optional = true }
+multihash = { version =  "0.8.0", optional = true }
+cid = { version = "0.2.3", optional = true }
+multibase = { version = "0.6.0", optional = true }
+serde_derive = { version =  "1.0.66", optional = true }
+serde_cbor = { version = "0.9.0", path = "/Users/hobofan/stuff/cbor", optional = true }
+serde_bytes = { version = "0.10.4", git = "https://github.com/hobofan/bytes.git", branch = "nightly-2018-11-08", default-features = false, optional = true }
+serde = { version = "1.0.66", default-features = false, optional = true }
+varint = { git = "https://github.com/sirkibsirkib/serde_varint", optional = true }
+
+# feature std
+prost = { version = "0.3.0", optional = true }
+prost-derive = { version = "0.3.0", optional = true }
+bytes = { version = "0.4.6", optional = true }
+rustc-hex = { version = "2.0.1", optional = true }
 
 # feature web3_compat
 web3 = { version = "0.4.0", optional = true }
 
 # feature pwasm
-pwasm-abi = { version = "0.1", optional = true }
+pwasm-std = { version = "0.12", optional = true }
+
+# feature examples
+itertools = { version = "0.7.6", optional = true }
+serde_json = { version = "1", optional = true }
 
 [build-dependencies]
-prost-build = "0.3.0"
-serde = "1.0.66"
-serde_derive = "1.0.66"
-serde_json = "1.0.27"
-heck = "0.3.0"
-syn = { version = "0.15", features = ["full", "extra-traits"] }
-quote = "0.6"
-proc-macro2 = "0.4.20"
+rlay_ontology_build = { path = "../rlay_ontology_build" }
 
 [features]
 default = ["std"]
-std = []
+std = ["prost", "prost-derive", "bytes", "rustc-hex", "serde/std", "serde_bytes/std", "serialize"]
+serialize = ["multihash", "cid", "multibase", "serde_derive", "serde_cbor", "serde_bytes", "serde", "varint", "integer-encoding"]
 
 web3_compat = ["web3"]
-pwasm = ["pwasm-abi"]
+pwasm = ["pwasm-std"]
 
-examples = ["serde_json"]
+examples = ["serde_json", "itertools"]

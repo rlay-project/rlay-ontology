@@ -1,52 +1,67 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(feature = "pwasm", feature(extern_prelude))]
+#![cfg_attr(feature = "pwasm", feature(alloc))]
 
+#[cfg(feature = "std")]
 extern crate cid;
+#[cfg(feature = "std")]
 extern crate integer_encoding;
+#[cfg(feature = "std")]
 extern crate multibase;
+#[cfg(feature = "std")]
 extern crate multihash;
+#[cfg(feature = "std")]
 extern crate prost;
+#[cfg(feature = "std")]
 #[macro_use]
 extern crate prost_derive;
+#[cfg(feature = "std")]
 extern crate rustc_hex;
+#[cfg(feature = "std")]
 extern crate serde;
+#[cfg(feature = "std")]
 extern crate serde_bytes;
+#[cfg(feature = "std")]
 #[macro_use]
 extern crate serde_derive;
+#[cfg(feature = "std")]
 extern crate varint;
 
 #[cfg(feature = "pwasm")]
-extern crate pwasm_abi;
+extern crate pwasm_std;
 #[cfg(feature = "web3_compat")]
 extern crate web3;
 
+#[cfg(feature = "std")]
 use cid::{Cid, Codec, Error as CidError, Version};
+#[cfg(feature = "std")]
 use integer_encoding::VarIntReader;
 
 pub mod prelude {
     pub use ontology::*;
+    #[cfg(feature = "std")]
     pub use ontology::compact::*;
+    #[cfg(feature = "std")]
     pub use ontology::v0::*;
     #[cfg(feature = "web3_compat")]
     pub use ontology::web3::*;
 }
 
-#[cfg(feature = "pwasm")]
-mod pwasm_prelude {
-    pub use pwasm_abi::types::Vec;
-}
-
 // Include the `items` module, which is generated from items.proto.
 pub mod ontology {
+    #[cfg(feature = "std")]
     use multihash::encode;
+    #[cfg(feature = "std")]
     use multihash::Hash;
-    use prost::Message;
+    #[cfg(feature = "std")]
     use cid::{Cid, Codec, Error as CidError, ToCid, Version};
+    #[cfg(feature = "std")]
     use serde::de::{Deserialize, Deserializer};
+    #[cfg(feature = "std")]
+    use prost::Message;
     #[cfg(feature = "web3_compat")]
     use self::web3::{FromABIV2Response, FromABIV2ResponseHinted};
     #[cfg(feature = "pwasm")]
-    use pwasm_prelude::*;
+    use pwasm_std::*;
 
     pub trait Canonicalize {
         fn canonicalize(&mut self);
@@ -56,7 +71,8 @@ pub mod ontology {
         const CODEC_CODE: u64;
     }
 
-    include!(concat!(env!("OUT_DIR"), "/rlay.ontology.rs"));
+    // include!(concat!(env!("OUT_DIR"), "/rlay.ontology.rs"));
+    include!(concat!(env!("OUT_DIR"), "/rlay.ontology.entities.rs"));
 
     include!("./rlay.ontology.macros.rs");
     include!(concat!(env!("OUT_DIR"), "/rlay.ontology.macros_applied.rs"));
@@ -72,11 +88,12 @@ pub mod ontology {
         }
 
         pub fn retrieve_fn_name(&self) -> String {
-            format!("retrieve{}", Into::<&str>::into(self.to_owned()))
+            format!("retrieve{}", Into::<&str>::into(self))
         }
     }
 
     impl Entity {
+        #[cfg(feature = "std")]
         pub fn to_bytes(&self) -> Vec<u8> {
             self.to_cid().unwrap().to_bytes()
         }
@@ -228,6 +245,7 @@ pub mod ontology {
     }
 
     /// Compact serialization format that allows for omitting empty fields.
+    #[cfg(feature = "std")]
     pub mod compact {
         use super::*;
 
@@ -290,6 +308,7 @@ pub mod ontology {
     }
 
     /// Serialization format for the canonical v0 cbor-based format.
+    #[cfg(feature = "std")]
     pub mod v0 {
         use super::*;
         use ontology::compact::FormatCompact;
@@ -300,6 +319,7 @@ pub mod ontology {
     }
 }
 
+#[cfg(feature = "std")]
 pub trait ToCidUnknown {
     fn to_cid_unknown(&self, permitted: Option<u64>) -> Result<Cid, CidError>;
 }
