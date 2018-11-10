@@ -1,6 +1,7 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(feature = "pwasm", feature(extern_prelude))]
+
 extern crate cid;
-#[macro_use]
-extern crate failure;
 extern crate integer_encoding;
 extern crate multibase;
 extern crate multihash;
@@ -14,10 +15,11 @@ extern crate serde_bytes;
 extern crate serde_derive;
 extern crate varint;
 
+#[cfg(feature = "pwasm")]
+extern crate pwasm_abi;
 #[cfg(feature = "web3_compat")]
 extern crate web3;
 
-use std::io::Cursor;
 use cid::{Cid, Codec, Error as CidError, Version};
 use integer_encoding::VarIntReader;
 
@@ -29,16 +31,22 @@ pub mod prelude {
     pub use ontology::web3::*;
 }
 
+#[cfg(feature = "pwasm")]
+mod pwasm_prelude {
+    pub use pwasm_abi::types::Vec;
+}
+
 // Include the `items` module, which is generated from items.proto.
 pub mod ontology {
     use multihash::encode;
     use multihash::Hash;
     use prost::Message;
     use cid::{Cid, Codec, Error as CidError, ToCid, Version};
-    use rustc_hex::ToHex;
-    use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
+    use serde::de::{Deserialize, Deserializer};
     #[cfg(feature = "web3_compat")]
     use self::web3::{FromABIV2Response, FromABIV2ResponseHinted};
+    #[cfg(feature = "pwasm")]
+    use pwasm_prelude::*;
 
     pub trait Canonicalize {
         fn canonicalize(&mut self);
@@ -46,33 +54,6 @@ pub mod ontology {
 
     pub trait AssociatedCodec {
         const CODEC_CODE: u64;
-    }
-
-    struct HexString<'a> {
-        pub inner: &'a [u8],
-    }
-
-    impl<'a> HexString<'a> {
-        pub fn wrap(bytes: &'a [u8]) -> Self {
-            HexString { inner: bytes }
-        }
-
-        pub fn wrap_option(bytes: Option<&'a Vec<u8>>) -> Option<Self> {
-            match bytes {
-                Some(bytes) => Some(HexString { inner: bytes }),
-                None => None,
-            }
-        }
-    }
-
-    impl<'a> ::serde::Serialize for HexString<'a> {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: ::serde::Serializer,
-        {
-            let hex: String = self.inner.to_hex();
-            Ok(try!(serializer.serialize_str(&format!("0x{}", &hex))))
-        }
     }
 
     include!(concat!(env!("OUT_DIR"), "/rlay.ontology.rs"));
@@ -129,9 +110,37 @@ pub mod ontology {
     /// Serialization format compatible with the Web3 ecosystem, specifically the Web3 JSONRPC.
     pub mod web3 {
         use super::*;
-        use rustc_hex::FromHex;
+        use rustc_hex::{FromHex, ToHex};
+        use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
 
         use web3::types::U256;
+
+        struct HexString<'a> {
+            pub inner: &'a [u8],
+        }
+
+        impl<'a> HexString<'a> {
+            pub fn wrap(bytes: &'a [u8]) -> Self {
+                HexString { inner: bytes }
+            }
+
+            pub fn wrap_option(bytes: Option<&'a Vec<u8>>) -> Option<Self> {
+                match bytes {
+                    Some(bytes) => Some(HexString { inner: bytes }),
+                    None => None,
+                }
+            }
+        }
+
+        impl<'a> ::serde::Serialize for HexString<'a> {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: ::serde::Serializer,
+            {
+                let hex: String = self.inner.to_hex();
+                Ok(try!(serializer.serialize_str(&format!("0x{}", &hex))))
+            }
+        }
 
         pub trait FormatWeb3<'a> {
             type Formatted: serde::Deserialize<'a> + serde::Serialize;
@@ -291,28 +300,11 @@ pub mod ontology {
     }
 }
 
-#[derive(Fail, Debug)]
-pub enum HashError {
-    #[fail(display = "Multihash error: {}", error)] MultihashError { error: multihash::Error },
-    #[fail(display = "Encoding error: {}", error)] EncodingError { error: prost::EncodeError },
-}
-
-impl From<multihash::Error> for HashError {
-    fn from(error: multihash::Error) -> HashError {
-        HashError::MultihashError { error }
-    }
-}
-
-impl From<prost::EncodeError> for HashError {
-    fn from(error: prost::EncodeError) -> HashError {
-        HashError::EncodingError { error }
-    }
-}
-
 pub trait ToCidUnknown {
     fn to_cid_unknown(&self, permitted: Option<u64>) -> Result<Cid, CidError>;
 }
 
+#[cfg(feature = "std")]
 impl ToCidUnknown for String {
     fn to_cid_unknown(&self, permitted: Option<u64>) -> Result<Cid, CidError> {
         let bytes = multibase::decode(self).unwrap().1;
@@ -320,6 +312,9 @@ impl ToCidUnknown for String {
     }
 }
 
+#[cfg(feature = "std")]
+use std::io::Cursor;
+#[cfg(feature = "std")]
 impl ToCidUnknown for [u8] {
     fn to_cid_unknown(&self, permitted: Option<u64>) -> Result<Cid, CidError> {
         let mut cur = Cursor::new(self);

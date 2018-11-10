@@ -998,6 +998,7 @@ mod v0 {
             let variants2 = variants.clone();
             let trait_impl: TokenStream = parse_quote!{
                 impl EntityV0 {
+                    #[cfg(feature = "std")]
                     pub fn serialize<W: ::std::io::Write>(&self, writer: &mut W) -> Result<(), std::io::Error> {
                         let version_number = 0;
                         writer.write_varint(version_number)?;
@@ -1011,6 +1012,7 @@ mod v0 {
                         })
                     }
 
+                    #[cfg(feature = "std")]
                     pub fn deserialize<R: ::std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error> {
                         let version_number: u64 = reader.read_varint()?;
                         if version_number != 0 {
