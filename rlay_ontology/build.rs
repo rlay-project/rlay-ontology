@@ -915,15 +915,21 @@ mod v0 {
             .iter()
             .map(|raw_kind| {
                 let kind = raw_kind.as_object().unwrap();
-
                 kind["name"].as_str().unwrap().to_owned()
             })
             .collect();
+        let kind_ids: Vec<u64> = kinds
+            .iter()
+            .map(|raw_kind| {
+                let kind = raw_kind.as_object().unwrap();
+                kind["kindId"].as_u64().unwrap().to_owned()
+            })
+            .collect();
 
-        write_entity(&mut out_file, kind_names);
+        write_entity(&mut out_file, kind_names, kind_ids);
     }
 
-    fn write_entity<W: Write>(writer: &mut W, kind_names: Vec<String>) {
+    fn write_entity<W: Write>(writer: &mut W, kind_names: Vec<String>, kind_ids: Vec<u64>) {
         let variants = kind_names_types(&kind_names);
 
         // Entity
@@ -988,19 +994,37 @@ mod v0 {
         }
         // impl EntityV0
         {
+            let variants = variants.clone();
+            let variants2 = variants.clone();
             let trait_impl: TokenStream = parse_quote!{
                 impl EntityV0 {
-                    pub fn serialize<W: ::std::io::Write>(&self, writer: &mut W) {
+                    pub fn serialize<W: ::std::io::Write>(&self, writer: &mut W) -> Result<(), std::io::Error> {
                         let version_number = 0;
-                        writer.write_varint(version_number).unwrap();
+                        writer.write_varint(version_number)?;
 
                         let kind_id = Into::<Entity>::into(self.clone()).kind().id();
-                        writer.write_varint(kind_id).unwrap();
+                        writer.write_varint(kind_id)?;
 
-                        match &self {
+                        Ok(match &self {
                             #(&EntityV0::#variants(ent) => serde_cbor::ser::to_writer_packed(writer, &ent.clone().to_compact_format()).unwrap()),
                             *
-                        };
+                        })
+                    }
+
+                    pub fn deserialize<R: ::std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error> {
+                        let version_number: u64 = reader.read_varint()?;
+                        if version_number != 0 {
+                            // TODO
+                            panic!("Can only parse version 0 entity.");
+                        }
+
+                        let kind_id: u64 = reader.read_varint()?;
+                        Ok(match kind_id {
+                            #(#kind_ids => EntityV0::#variants2(FormatCompact::from_compact_format(serde_cbor::de::from_reader(reader).unwrap()))),
+                            *,
+                            // TODO
+                            _ => panic!("Unrecognized kind id.")
+                        })
                     }
                 }
             };

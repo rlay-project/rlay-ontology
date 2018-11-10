@@ -82,6 +82,9 @@ pub fn main() {
     entity_v0.serialize(&mut entity_serialized);
     println!("{}", SolidityBytes(&entity_serialized));
 
+    let entity_v0 = EntityV0::deserialize(&mut std::io::Cursor::new(entity_serialized)).unwrap();
+    println!("{:?}", &entity_v0);
+
     // println!(
     // "{}",
     // SolidityBytesChunked(

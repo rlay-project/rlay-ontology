@@ -285,6 +285,7 @@ pub mod ontology {
         use super::*;
         use ontology::compact::FormatCompact;
         use integer_encoding::VarIntWriter;
+        use integer_encoding::VarIntReader;
 
         include!(concat!(env!("OUT_DIR"), "/rlay.ontology.v0.rs"));
     }
