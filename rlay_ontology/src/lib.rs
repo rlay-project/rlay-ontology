@@ -1,6 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "pwasm", feature(alloc))]
 
+#[cfg(feature = "serde")]
+extern crate serde;
+#[cfg(feature = "serde_derive")]
+#[macro_use]
+extern crate serde_derive;
+
 #[cfg(feature = "std")]
 extern crate cid;
 #[cfg(feature = "std")]
@@ -17,14 +23,10 @@ extern crate prost_derive;
 #[cfg(feature = "std")]
 extern crate rustc_hex;
 #[cfg(feature = "std")]
-extern crate serde;
-#[cfg(feature = "std")]
 extern crate serde_bytes;
-#[cfg(feature = "std")]
-#[macro_use]
-extern crate serde_derive;
-#[cfg(feature = "std")]
-extern crate varint;
+
+#[cfg(feature = "serialize2")]
+extern crate unsigned_varint;
 
 #[cfg(feature = "pwasm")]
 extern crate pwasm_std;
@@ -38,7 +40,7 @@ use integer_encoding::VarIntReader;
 
 pub mod prelude {
     pub use ontology::*;
-    #[cfg(feature = "std")]
+    #[cfg(feature = "serde")]
     pub use ontology::compact::*;
     #[cfg(feature = "std")]
     pub use ontology::v0::*;
@@ -245,7 +247,7 @@ pub mod ontology {
     }
 
     /// Compact serialization format that allows for omitting empty fields.
-    #[cfg(feature = "std")]
+    #[cfg(feature = "serde")]
     pub mod compact {
         use super::*;
 

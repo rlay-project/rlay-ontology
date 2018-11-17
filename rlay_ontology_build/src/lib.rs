@@ -1,5 +1,5 @@
 #![allow(unused_imports)]
-#![recursion_limit = "128"]
+#![recursion_limit = "256"]
 extern crate heck;
 extern crate proc_macro2;
 #[macro_use]
@@ -7,9 +7,13 @@ extern crate quote;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
 #[macro_use]
 extern crate syn;
+
+#[cfg(feature = "serde_json")]
+extern crate serde_json;
+
+mod intermediate;
 
 use std::env;
 use std::fs::File;
@@ -17,8 +21,9 @@ use std::io::Write;
 use std::io::prelude::*;
 use std::path::Path;
 use heck::SnakeCase;
-use serde_json::Value;
 use proc_macro2::TokenStream;
+
+use intermediate::{parse_intermediate_contents, Field, Kind};
 
 pub fn build_files() {
     entities::build_file("src/intermediate.json", "rlay.ontology.entities.rs");
@@ -26,24 +31,6 @@ pub fn build_files() {
     web3::build_applied_file("src/intermediate.json", "rlay.ontology.web3_applied.rs");
     compact::build_file("src/intermediate.json", "rlay.ontology.compact.rs");
     v0::build_file("src/intermediate.json", "rlay.ontology.v0.rs");
-}
-
-#[derive(Deserialize)]
-struct Field {
-    pub name: String,
-    pub kind: String,
-    #[serde(default)]
-    pub required: bool,
-}
-
-impl Field {
-    pub fn is_array_kind(&self) -> bool {
-        self.kind.ends_with("[]")
-    }
-
-    pub fn field_ident(&self) -> syn::Ident {
-        syn::parse_str(&self.name.to_snake_case()).unwrap()
-    }
 }
 
 fn kind_names_types(kind_names: &[String]) -> Vec<syn::Type> {
@@ -66,18 +53,14 @@ mod main {
         intermediate_file
             .read_to_string(&mut intermediate_contents)
             .unwrap();
-        let intermediate: Value = serde_json::from_str(&intermediate_contents).unwrap();
+        let intermediate = parse_intermediate_contents(&intermediate_contents);
 
         let mut out_file = File::create(&dest_path).unwrap();
 
-        let kinds = intermediate.as_object().unwrap()["kinds"]
-            .as_array()
-            .unwrap();
-        for raw_kind in kinds {
-            let kind = raw_kind.as_object().unwrap();
-
-            let kind_name = kind["name"].as_str().unwrap();
-            let kind_cid_prefix = kind["cidPrefix"].as_u64().unwrap();
+        let kinds = intermediate.kinds;
+        for raw_kind in kinds.iter() {
+            let kind_name = &raw_kind.name;
+            let kind_cid_prefix = raw_kind.cidPrefix;
 
             // Header line
             write!(out_file, "\n// {}\n", kind_name).unwrap();
@@ -104,18 +87,9 @@ mod main {
 
         let kind_names: Vec<String> = kinds
             .iter()
-            .map(|raw_kind| {
-                let kind = raw_kind.as_object().unwrap();
-                kind["name"].as_str().unwrap().to_owned()
-            })
+            .map(|raw_kind| raw_kind.name.to_owned())
             .collect();
-        let kind_ids: Vec<u64> = kinds
-            .iter()
-            .map(|raw_kind| {
-                let kind = raw_kind.as_object().unwrap();
-                kind["kindId"].as_u64().unwrap().to_owned()
-            })
-            .collect();
+        let kind_ids: Vec<u64> = kinds.iter().map(|raw_kind| raw_kind.kindId).collect();
         write_entity_kind(&mut out_file, kind_names.clone(), kind_ids.clone());
         write_entity(&mut out_file, kind_names.clone());
     }
@@ -276,33 +250,14 @@ mod entities {
         intermediate_file
             .read_to_string(&mut intermediate_contents)
             .unwrap();
-        let intermediate: Value = serde_json::from_str(&intermediate_contents).unwrap();
+        let intermediate = parse_intermediate_contents(&intermediate_contents);
 
         let mut out_file = File::create(&dest_path).unwrap();
 
-        let kinds = intermediate.as_object().unwrap()["kinds"]
-            .as_array()
-            .unwrap();
-
-        let kind_names: Vec<String> = kinds
-            .iter()
-            .map(|raw_kind| {
-                let kind = raw_kind.as_object().unwrap();
-                kind["name"].as_str().unwrap().to_owned()
-            })
-            .collect();
-        let kind_ids: Vec<u64> = kinds
-            .iter()
-            .map(|raw_kind| {
-                let kind = raw_kind.as_object().unwrap();
-                kind["kindId"].as_u64().unwrap().to_owned()
-            })
-            .collect();
-
-        for raw_kind in kinds {
-            let kind = raw_kind.as_object().unwrap();
-            let kind_name = kind["name"].as_str().unwrap();
-            let fields: Vec<Field> = serde_json::from_value(kind["fields"].clone()).unwrap();
+        let kinds = intermediate.kinds;
+        for raw_kind in kinds.iter() {
+            let kind_name = &raw_kind.name;
+            let fields: Vec<_> = raw_kind.fields.clone();
 
             write_entity(&mut out_file, kind_name, &fields);
         }
@@ -398,6 +353,7 @@ fn write_format_variant_wrapper<W: Write>(
             syn::parse_str(&format!("from_{}_format", format_suffix_lc)).unwrap();
 
         let trait_impl: TokenStream = parse_quote! {
+            #[cfg(feature = "std")]
             impl<'a> #conversion_trait<'a> for #inner_ty {
                 type Formatted = #wrapper_ty;
                 fn #to_fn_ident(self) -> Self::Formatted {
@@ -426,18 +382,14 @@ mod compact {
         intermediate_file
             .read_to_string(&mut intermediate_contents)
             .unwrap();
-        let intermediate: Value = serde_json::from_str(&intermediate_contents).unwrap();
+        let intermediate = parse_intermediate_contents(&intermediate_contents);
 
         let mut out_file = File::create(&dest_path).unwrap();
 
-        let kinds = intermediate.as_object().unwrap()["kinds"]
-            .as_array()
-            .unwrap();
-
+        let kinds = intermediate.kinds;
         for raw_kind in kinds {
-            let kind = raw_kind.as_object().unwrap();
-            let kind_name = kind["name"].as_str().unwrap();
-            let fields: Vec<Field> = serde_json::from_value(kind["fields"].clone()).unwrap();
+            let kind_name = &raw_kind.name;
+            let fields = raw_kind.fields.clone();
 
             write_variant_format_compact(&mut out_file, kind_name, &fields);
         }
@@ -599,19 +551,15 @@ mod web3 {
         intermediate_file
             .read_to_string(&mut intermediate_contents)
             .unwrap();
-        let intermediate: Value = serde_json::from_str(&intermediate_contents).unwrap();
+        let intermediate = parse_intermediate_contents(&intermediate_contents);
 
         let mut out_file = File::create(&dest_path).unwrap();
 
-        let kinds = intermediate.as_object().unwrap()["kinds"]
-            .as_array()
-            .unwrap();
-
+        let kinds = intermediate.kinds;
         // impl FromABIV2Response
-        for raw_kind in kinds {
-            let kind = raw_kind.as_object().unwrap();
-            let kind_name = kind["name"].as_str().unwrap();
-            let fields: Vec<Field> = serde_json::from_value(kind["fields"].clone()).unwrap();
+        for raw_kind in kinds.iter() {
+            let kind_name = &raw_kind.name;
+            let fields = raw_kind.fields.clone();
 
             write_entity_impl_from_abiv2_response(&mut out_file, raw_kind);
             write_variant_format_web3(&mut out_file, kind_name, &fields);
@@ -619,18 +567,14 @@ mod web3 {
 
         let kind_names: Vec<String> = kinds
             .iter()
-            .map(|raw_kind| {
-                let kind = raw_kind.as_object().unwrap();
-                kind["name"].as_str().unwrap().to_owned()
-            })
+            .map(|raw_kind| raw_kind.name.to_owned())
             .collect();
         write_entity_format_web3(&mut out_file, kind_names);
     }
 
-    fn write_entity_impl_from_abiv2_response<W: Write>(writer: &mut W, raw_kind: &Value) {
-        let kind = raw_kind.as_object().unwrap();
-        let kind_name = kind["name"].as_str().unwrap();
-        let fields: Vec<Field> = serde_json::from_value(kind["fields"].clone()).unwrap();
+    fn write_entity_impl_from_abiv2_response<W: Write>(writer: &mut W, raw_kind: &Kind) {
+        let kind_name = &raw_kind.name;
+        let fields = raw_kind.fields.clone();
 
         let decode_offset_macros: TokenStream = fields
             .iter()
@@ -1004,28 +948,16 @@ mod v0 {
         intermediate_file
             .read_to_string(&mut intermediate_contents)
             .unwrap();
-        let intermediate: Value = serde_json::from_str(&intermediate_contents).unwrap();
+        let intermediate = parse_intermediate_contents(&intermediate_contents);
 
         let mut out_file = File::create(&dest_path).unwrap();
 
-        let kinds = intermediate.as_object().unwrap()["kinds"]
-            .as_array()
-            .unwrap();
-
+        let kinds = intermediate.kinds;
         let kind_names: Vec<String> = kinds
             .iter()
-            .map(|raw_kind| {
-                let kind = raw_kind.as_object().unwrap();
-                kind["name"].as_str().unwrap().to_owned()
-            })
+            .map(|raw_kind| raw_kind.name.to_owned())
             .collect();
-        let kind_ids: Vec<u64> = kinds
-            .iter()
-            .map(|raw_kind| {
-                let kind = raw_kind.as_object().unwrap();
-                kind["kindId"].as_u64().unwrap().to_owned()
-            })
-            .collect();
+        let kind_ids: Vec<u64> = kinds.iter().map(|raw_kind| raw_kind.kindId).collect();
 
         write_entity(&mut out_file, kind_names, kind_ids);
     }
@@ -1111,6 +1043,18 @@ mod v0 {
                             #(&EntityV0::#variants(ent) => serde_cbor::ser::to_writer_packed(writer, &ent.clone().to_compact_format()).unwrap()),
                             *
                         })
+                    }
+
+                    #[cfg(feature = "serialize2")]
+                    pub fn serialize(&self, buf: &mut [u8]) -> Result<&[u8], ()> {
+                        unsigned_varint::encode::u8(version_number, &mut buf[0..2]);
+                        unsigned_varint::encode::u8(version_number, &mut buf[2..4]);
+
+                        // let kind_id = Into::<Entity>::into(self.clone()).kind().id();
+                        // writer.write_varint(kind_id)?;
+
+                        // TODO
+                        unimplemented!()
                     }
 
                     #[cfg(feature = "std")]
