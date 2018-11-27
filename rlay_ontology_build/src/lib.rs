@@ -269,7 +269,7 @@ mod entities {
             .enumerate()
             .map(|(i, field)| {
                 let field_ident = field.field_ident();
-                let i_str = i.to_string();
+                let i_str = (i + 1).to_string();
                 let prost_attribute: TokenStream = match (field.is_array_kind(), field.required) {
                     (true, _) => parse_quote!(prost(bytes, repeated, tag=#i_str)),
                     (false, true) => parse_quote!(prost(bytes, required, tag=#i_str)),
@@ -712,6 +712,23 @@ mod web3 {
                 }
             };
             write!(writer, "{}", into_impl).unwrap();
+        }
+        // FormatWeb3
+        {
+            let trait_impl: TokenStream = parse_quote! {
+                impl<'a> FormatWeb3<'a> for Entity {
+                    type Formatted = EntityFormatWeb3;
+
+                    fn to_web3_format(self) -> Self::Formatted {
+                        self.into()
+                    }
+
+                    fn from_web3_format(formatted: Self::Formatted) -> Self {
+                        formatted.into()
+                    }
+                }
+            };
+            write!(writer, "{}", trait_impl).unwrap();
         }
     }
 
