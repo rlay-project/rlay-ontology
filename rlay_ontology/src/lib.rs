@@ -1,29 +1,48 @@
-extern crate cid;
-#[macro_use]
-extern crate failure;
-extern crate integer_encoding;
-extern crate multibase;
-extern crate multihash;
-extern crate prost;
-#[macro_use]
-extern crate prost_derive;
-extern crate rustc_hex;
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(feature = "pwasm", feature(alloc))]
+
+#[cfg(feature = "serde")]
 extern crate serde;
-extern crate serde_bytes;
+#[cfg(feature = "serde_derive")]
 #[macro_use]
 extern crate serde_derive;
-extern crate varint;
 
+#[cfg(feature = "std")]
+extern crate cid;
+#[cfg(feature = "std")]
+extern crate integer_encoding;
+#[cfg(feature = "std")]
+extern crate multibase;
+#[cfg(feature = "std")]
+extern crate multihash;
+#[cfg(feature = "std")]
+extern crate prost;
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate prost_derive;
+#[cfg(feature = "std")]
+extern crate rustc_hex;
+#[cfg(feature = "std")]
+extern crate serde_bytes;
+
+#[cfg(feature = "serialize2")]
+extern crate unsigned_varint;
+
+#[cfg(feature = "pwasm")]
+extern crate pwasm_std;
 #[cfg(feature = "web3_compat")]
 extern crate web3;
 
-use std::io::Cursor;
+#[cfg(feature = "std")]
 use cid::{Cid, Codec, Error as CidError, Version};
+#[cfg(feature = "std")]
 use integer_encoding::VarIntReader;
 
 pub mod prelude {
     pub use ontology::*;
+    #[cfg(feature = "serde")]
     pub use ontology::compact::*;
+    #[cfg(feature = "std")]
     pub use ontology::v0::*;
     #[cfg(feature = "web3_compat")]
     pub use ontology::web3::*;
@@ -31,14 +50,20 @@ pub mod prelude {
 
 // Include the `items` module, which is generated from items.proto.
 pub mod ontology {
+    #[cfg(feature = "std")]
     use multihash::encode;
+    #[cfg(feature = "std")]
     use multihash::Hash;
-    use prost::Message;
+    #[cfg(feature = "std")]
     use cid::{Cid, Codec, Error as CidError, ToCid, Version};
-    use rustc_hex::ToHex;
-    use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
+    #[cfg(feature = "std")]
+    use serde::de::{Deserialize, Deserializer};
+    #[cfg(feature = "std")]
+    use prost::Message;
     #[cfg(feature = "web3_compat")]
     use self::web3::{FromABIV2Response, FromABIV2ResponseHinted};
+    #[cfg(feature = "pwasm")]
+    use pwasm_std::*;
 
     pub trait Canonicalize {
         fn canonicalize(&mut self);
@@ -48,34 +73,8 @@ pub mod ontology {
         const CODEC_CODE: u64;
     }
 
-    struct HexString<'a> {
-        pub inner: &'a [u8],
-    }
-
-    impl<'a> HexString<'a> {
-        pub fn wrap(bytes: &'a [u8]) -> Self {
-            HexString { inner: bytes }
-        }
-
-        pub fn wrap_option(bytes: Option<&'a Vec<u8>>) -> Option<Self> {
-            match bytes {
-                Some(bytes) => Some(HexString { inner: bytes }),
-                None => None,
-            }
-        }
-    }
-
-    impl<'a> ::serde::Serialize for HexString<'a> {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: ::serde::Serializer,
-        {
-            let hex: String = self.inner.to_hex();
-            Ok(try!(serializer.serialize_str(&format!("0x{}", &hex))))
-        }
-    }
-
-    include!(concat!(env!("OUT_DIR"), "/rlay.ontology.rs"));
+    // include!(concat!(env!("OUT_DIR"), "/rlay.ontology.rs"));
+    include!(concat!(env!("OUT_DIR"), "/rlay.ontology.entities.rs"));
 
     include!("./rlay.ontology.macros.rs");
     include!(concat!(env!("OUT_DIR"), "/rlay.ontology.macros_applied.rs"));
@@ -91,11 +90,12 @@ pub mod ontology {
         }
 
         pub fn retrieve_fn_name(&self) -> String {
-            format!("retrieve{}", Into::<&str>::into(self.to_owned()))
+            format!("retrieve{}", Into::<&str>::into(self))
         }
     }
 
     impl Entity {
+        #[cfg(feature = "std")]
         pub fn to_bytes(&self) -> Vec<u8> {
             self.to_cid().unwrap().to_bytes()
         }
@@ -129,9 +129,37 @@ pub mod ontology {
     /// Serialization format compatible with the Web3 ecosystem, specifically the Web3 JSONRPC.
     pub mod web3 {
         use super::*;
-        use rustc_hex::FromHex;
+        use rustc_hex::{FromHex, ToHex};
+        use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
 
         use web3::types::U256;
+
+        struct HexString<'a> {
+            pub inner: &'a [u8],
+        }
+
+        impl<'a> HexString<'a> {
+            pub fn wrap(bytes: &'a [u8]) -> Self {
+                HexString { inner: bytes }
+            }
+
+            pub fn wrap_option(bytes: Option<&'a Vec<u8>>) -> Option<Self> {
+                match bytes {
+                    Some(bytes) => Some(HexString { inner: bytes }),
+                    None => None,
+                }
+            }
+        }
+
+        impl<'a> ::serde::Serialize for HexString<'a> {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: ::serde::Serializer,
+            {
+                let hex: String = self.inner.to_hex();
+                Ok(try!(serializer.serialize_str(&format!("0x{}", &hex))))
+            }
+        }
 
         pub trait FormatWeb3<'a> {
             type Formatted: serde::Deserialize<'a> + serde::Serialize;
@@ -219,6 +247,7 @@ pub mod ontology {
     }
 
     /// Compact serialization format that allows for omitting empty fields.
+    #[cfg(feature = "serde")]
     pub mod compact {
         use super::*;
 
@@ -281,6 +310,7 @@ pub mod ontology {
     }
 
     /// Serialization format for the canonical v0 cbor-based format.
+    #[cfg(feature = "std")]
     pub mod v0 {
         use super::*;
         use ontology::compact::FormatCompact;
@@ -291,28 +321,12 @@ pub mod ontology {
     }
 }
 
-#[derive(Fail, Debug)]
-pub enum HashError {
-    #[fail(display = "Multihash error: {}", error)] MultihashError { error: multihash::Error },
-    #[fail(display = "Encoding error: {}", error)] EncodingError { error: prost::EncodeError },
-}
-
-impl From<multihash::Error> for HashError {
-    fn from(error: multihash::Error) -> HashError {
-        HashError::MultihashError { error }
-    }
-}
-
-impl From<prost::EncodeError> for HashError {
-    fn from(error: prost::EncodeError) -> HashError {
-        HashError::EncodingError { error }
-    }
-}
-
+#[cfg(feature = "std")]
 pub trait ToCidUnknown {
     fn to_cid_unknown(&self, permitted: Option<u64>) -> Result<Cid, CidError>;
 }
 
+#[cfg(feature = "std")]
 impl ToCidUnknown for String {
     fn to_cid_unknown(&self, permitted: Option<u64>) -> Result<Cid, CidError> {
         let bytes = multibase::decode(self).unwrap().1;
@@ -320,6 +334,9 @@ impl ToCidUnknown for String {
     }
 }
 
+#[cfg(feature = "std")]
+use std::io::Cursor;
+#[cfg(feature = "std")]
 impl ToCidUnknown for [u8] {
     fn to_cid_unknown(&self, permitted: Option<u64>) -> Result<Cid, CidError> {
         let mut cur = Cursor::new(self);

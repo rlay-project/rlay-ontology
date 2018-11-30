@@ -4,6 +4,10 @@ members = [
   "rlay_ontology_stdweb"
 ]
 
+exclude = [
+  "rlay_ontology_nostd_test"
+]
+
 [patch.crates-io]
 # see https://github.com/ipld/rust-cid/pull/9
 cid = { git = 'https://github.com/hobofan/rust-cid', rev = '27798e5245c234dae1236470a5a5568cb067a216' }

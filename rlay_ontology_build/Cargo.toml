@@ -1,0 +1,20 @@
+[package]
+name = "rlay_ontology_build"
+version = "0.2.1"
+authors = ["Maximilian Goisser <goisser94@gmail.com>"]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1.0.66", default-features = false }
+serde_derive = "1.0.66"
+heck = "0.3.0"
+syn = { version = "0.15", features = ["full", "extra-traits"] }
+quote = "0.6"
+proc-macro2 = "0.4.20"
+serde_json = { version = "1.0.27", optional = true }
+
+[features]
+default = ["std"]
+std = ["serde_json"]
