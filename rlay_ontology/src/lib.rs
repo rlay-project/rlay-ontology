@@ -97,8 +97,8 @@ pub mod ontology {
 
         pub fn get_subject(&self) -> Option<&Vec<u8>> {
             match &self {
-                Entity::ClassAssertion(ent) => Some(ent.get_subject()),
-                Entity::NegativeClassAssertion(ent) => Some(ent.get_subject()),
+                Entity::ClassAssertion(ent) => ent.get_subject(),
+                Entity::NegativeClassAssertion(ent) => ent.get_subject(),
                 _ => None,
             }
         }
@@ -289,14 +289,14 @@ pub mod ontology {
         }
 
         impl ClassAssertion {
-            pub fn get_subject(&self) -> &Vec<u8> {
-                &self.subject
+            pub fn get_subject(&self) -> Option<&Vec<u8>> {
+                self.subject.as_ref()
             }
         }
 
         impl NegativeClassAssertion {
-            pub fn get_subject(&self) -> &Vec<u8> {
-                &self.subject
+            pub fn get_subject(&self) -> Option<&Vec<u8>> {
+                self.subject.as_ref()
             }
         }
     }
