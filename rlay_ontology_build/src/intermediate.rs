@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
-use syn;
 use heck::SnakeCase;
 use std::collections::BTreeMap;
+use syn;
 
 pub fn parse_intermediate_contents(contents: &str) -> Intermediate {
     serde_json::from_str(contents).unwrap()

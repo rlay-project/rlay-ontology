@@ -79,9 +79,6 @@ pub mod ontology {
     include!("./rlay.ontology.macros.rs");
     include!(concat!(env!("OUT_DIR"), "/rlay.ontology.macros_applied.rs"));
 
-    // TODO: generate all of these from ontology intermediate.json
-    impl_canonicalize!(Annotation; annotations);
-
     impl EntityKind {
         pub fn from_event_name(event_name: &str) -> Result<Self, ()> {
             let name = event_name.replace("Stored", "");
