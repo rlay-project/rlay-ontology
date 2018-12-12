@@ -2,6 +2,7 @@
 name = "rlay_ontology"
 version = "0.2.1"
 authors = ["Maximilian Goisser <goisser94@gmail.com>"]
+edition = "2018"
 
 [lib]
 name = "rlay_ontology"
