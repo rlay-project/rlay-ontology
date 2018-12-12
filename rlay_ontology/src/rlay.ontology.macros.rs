@@ -3,7 +3,9 @@ macro_rules! impl_to_cid {
             impl ToCid for $v {
                 fn to_cid(&self) -> Result<Cid, CidError> {
                     let mut encoded = Vec::<u8>::new();
-                    self.encode(&mut encoded).map_err(|_| CidError::ParsingError)?;
+                    let mut cloned = self.clone();
+                    cloned.canonicalize();
+                    cloned.encode(&mut encoded).map_err(|_| CidError::ParsingError)?;
                     let hashed = encode(Hash::Keccak256, &encoded).map_err(|_| CidError::ParsingError)?;
 
                     let cid = Cid::new(Codec::Unknown(<Self as AssociatedCodec>::CODEC_CODE), Version::V1, &hashed);

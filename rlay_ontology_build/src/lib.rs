@@ -15,13 +15,13 @@ extern crate serde_json;
 
 mod intermediate;
 
-use std::env;
-use std::fs::File;
-use std::io::Write;
-use std::io::prelude::*;
-use std::path::Path;
 use heck::SnakeCase;
 use proc_macro2::TokenStream;
+use std::env;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::Write;
+use std::path::Path;
 
 use intermediate::{parse_intermediate_contents, Field, Kind};
 
@@ -69,7 +69,8 @@ mod main {
                 out_file,
                 "codec_code!({}, {});\n",
                 kind_name, kind_cid_prefix
-            ).unwrap();
+            )
+            .unwrap();
             // impl ToCid
             let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
             let impl_to_cid: TokenStream = parse_quote! {
@@ -77,12 +78,28 @@ mod main {
                 impl_to_cid!(#kind_ty);
             };
             write!(out_file, "{}", impl_to_cid).unwrap();
+            // impl Canonicalize
+            {
+                let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+                let fields: Vec<syn::Ident> = raw_kind
+                    .fields
+                    .clone()
+                    .into_iter()
+                    .filter(|n| n.is_array_kind())
+                    .map(|n| n.field_ident())
+                    .collect();
+                let impl_canonicalize: TokenStream = parse_quote! {
+                    impl_canonicalize!(#kind_ty; #(#fields),*);
+                };
+                write!(out_file, "{}", impl_canonicalize).unwrap();
+            }
 
             write!(
                 out_file,
                 "impl_into_entity_kind!({0}, Entity::{0});\n",
                 kind_name
-            ).unwrap();
+            )
+            .unwrap();
         }
 
         let kind_names: Vec<String> = kinds
@@ -411,16 +428,16 @@ mod compact {
             .map(|field| {
                 let field_ident = field.field_ident();
                 let tokens: TokenStream = match (field.is_array_kind(), field.required) {
-                    (true, _) => parse_quote!{
+                    (true, _) => parse_quote! {
                         #[serde(skip_serializing_if = "Vec::is_empty")]
                         // TODO: bytes serialize
                         pub #field_ident: &'a Vec<Vec<u8>>,
                     },
-                    (false, true) => parse_quote!{
+                    (false, true) => parse_quote! {
                         #[serde(with = "serde_bytes")]
                         pub #field_ident: &'a Vec<u8>,
                     },
-                    (false, false) => parse_quote!{
+                    (false, false) => parse_quote! {
                         #[serde(skip_serializing_if = "Option::is_none")]
                         // TODO: bytes serialize
                         pub #field_ident: &'a Option<Vec<u8>>,
@@ -440,7 +457,7 @@ mod compact {
             .collect();
 
         let wrapper_ty: syn::Type = syn::parse_str(&format!("{}FormatCompact", kind_name)).unwrap();
-        let trait_impl: TokenStream = parse_quote!{
+        let trait_impl: TokenStream = parse_quote! {
             #[cfg(feature = "std")]
             impl ::serde::Serialize for #wrapper_ty {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -474,15 +491,15 @@ mod compact {
             .map(|field| {
                 let field_ident = field.field_ident();
                 let stmt: TokenStream = match (field.is_array_kind(), field.required) {
-                    (true, _) => parse_quote!{
+                    (true, _) => parse_quote! {
                         #[serde(default, deserialize_with = "nullable_vec")]
                         #field_ident: Vec<Vec<u8>>,
                     },
-                    (false, true) => parse_quote!{
+                    (false, true) => parse_quote! {
                         #[serde(with = "serde_bytes")]
                         #field_ident: Vec<u8>,
                     },
-                    (false, false) => parse_quote!{
+                    (false, false) => parse_quote! {
                         #[serde(default)]
                         // TODO: bytes serialize
                         #field_ident: Option<Vec<u8>>,
@@ -777,7 +794,7 @@ mod web3 {
             .collect();
 
         let wrapper_ty: syn::Type = syn::parse_str(&format!("{}FormatWeb3", kind_name)).unwrap();
-        let trait_impl: TokenStream = parse_quote!{
+        let trait_impl: TokenStream = parse_quote! {
             impl ::serde::Serialize for #wrapper_ty {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
@@ -812,7 +829,8 @@ mod web3 {
         let field_names_const_decl: TokenStream = syn::parse_str(&format!(
             "const FIELDS: &'static [&'static str] = &{:?};",
             field_names
-        )).unwrap();
+        ))
+        .unwrap();
 
         // intializes a empty Option variable for each field
         let initialize_empty_fields: TokenStream = fields
@@ -1046,7 +1064,7 @@ mod v0 {
         {
             let variants = variants.clone();
             let variants2 = variants.clone();
-            let trait_impl: TokenStream = parse_quote!{
+            let trait_impl: TokenStream = parse_quote! {
                 impl EntityV0 {
                     #[cfg(feature = "std")]
                     pub fn serialize<W: ::std::io::Write>(&self, writer: &mut W) -> Result<(), std::io::Error> {
