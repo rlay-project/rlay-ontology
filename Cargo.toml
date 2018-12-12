@@ -1,7 +1,6 @@
 [workspace]
 members = [
-  "rlay_ontology",
-  "rlay_ontology_stdweb"
+  "rlay_ontology"
 ]
 
 exclude = [

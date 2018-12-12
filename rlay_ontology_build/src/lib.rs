@@ -474,7 +474,7 @@ mod compact {
                         #wrap_helper_fields
                     };
 
-                    Ok(try!(ext.serialize(serializer)))
+                    Ok(ext.serialize(serializer)?)
                 }
             }
         };
@@ -813,7 +813,7 @@ mod web3 {
                         #wrap_helper_fields
                     };
 
-                    Ok(try!(ext.serialize(serializer)))
+                    Ok(ext.serialize(serializer)?)
                 }
             }
         };

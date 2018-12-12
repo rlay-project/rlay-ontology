@@ -9,15 +9,15 @@ extern crate rustc_hex;
 extern crate serde_cbor;
 extern crate serde_json;
 
+use cid::ToCid;
+use integer_encoding::VarInt;
 use itertools::Itertools;
 use multibase::{encode as base_encode, Base};
+use prost::Message;
 use rlay_ontology::prelude::*;
 use rustc_hex::FromHex;
 use rustc_hex::ToHex;
-use cid::ToCid;
 use std::collections::BTreeMap;
-use prost::Message;
-use integer_encoding::VarInt;
 
 pub struct AnnotationMap(BTreeMap<Vec<u8>, Annotation>);
 pub struct ClassMap(BTreeMap<Vec<u8>, Class>);
@@ -39,13 +39,15 @@ impl<'a> std::fmt::Display for SolidityBytesChunked<'a> {
             "{}",
             self.0
                 .chunks(1)
-                .map(|n| n.iter()
+                .map(|n| n
+                    .iter()
                     .map(|m| format!("{:02x}", m))
                     .collect::<Vec<_>>()
                     .join(""))
                 .collect::<Vec<String>>()
                 .join("")
-        ).unwrap();
+        )
+        .unwrap();
         Ok(())
     }
 }

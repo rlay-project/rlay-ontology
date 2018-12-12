@@ -30,8 +30,6 @@ extern crate unsigned_varint;
 
 #[cfg(feature = "pwasm")]
 extern crate pwasm_std;
-#[cfg(feature = "web3_compat")]
-extern crate web3;
 
 #[cfg(feature = "std")]
 use cid::{Cid, Codec, Error as CidError, Version};
@@ -39,31 +37,31 @@ use cid::{Cid, Codec, Error as CidError, Version};
 use integer_encoding::VarIntReader;
 
 pub mod prelude {
-    pub use ontology::*;
     #[cfg(feature = "serde")]
-    pub use ontology::compact::*;
+    pub use crate::ontology::compact::*;
     #[cfg(feature = "std")]
-    pub use ontology::v0::*;
+    pub use crate::ontology::v0::*;
     #[cfg(feature = "web3_compat")]
-    pub use ontology::web3::*;
+    pub use crate::ontology::web3::*;
+    pub use crate::ontology::*;
 }
 
 // Include the `items` module, which is generated from items.proto.
 pub mod ontology {
+    #[cfg(feature = "web3_compat")]
+    use self::web3::{FromABIV2Response, FromABIV2ResponseHinted};
+    #[cfg(feature = "std")]
+    use cid::{Cid, Codec, Error as CidError, ToCid, Version};
     #[cfg(feature = "std")]
     use multihash::encode;
     #[cfg(feature = "std")]
     use multihash::Hash;
     #[cfg(feature = "std")]
-    use cid::{Cid, Codec, Error as CidError, ToCid, Version};
-    #[cfg(feature = "std")]
-    use serde::de::{Deserialize, Deserializer};
-    #[cfg(feature = "std")]
     use prost::Message;
-    #[cfg(feature = "web3_compat")]
-    use self::web3::{FromABIV2Response, FromABIV2ResponseHinted};
     #[cfg(feature = "pwasm")]
     use pwasm_std::*;
+    #[cfg(feature = "std")]
+    use serde::de::{Deserialize, Deserializer};
 
     pub trait Canonicalize {
         fn canonicalize(&mut self);
@@ -129,7 +127,7 @@ pub mod ontology {
         use rustc_hex::{FromHex, ToHex};
         use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
 
-        use web3::types::U256;
+        use ::web3::types::U256;
 
         struct HexString<'a> {
             pub inner: &'a [u8],
@@ -154,7 +152,7 @@ pub mod ontology {
                 S: ::serde::Serializer,
             {
                 let hex: String = self.inner.to_hex();
-                Ok(try!(serializer.serialize_str(&format!("0x{}", &hex))))
+                Ok(serializer.serialize_str(&format!("0x{}", &hex))?)
             }
         }
 
@@ -211,32 +209,29 @@ pub mod ontology {
         }
 
         macro_rules! decode_offset {
-            ($bytes_var:ident, $offset_var:ident, $start:expr, $end:expr) => (
+            ($bytes_var:ident, $offset_var:ident, $start:expr, $end:expr) => {
                 let $offset_var = U256::from_big_endian(&$bytes_var[$start..$end]);
-            );
+            };
         }
 
         macro_rules! decode_param {
-            (bytes_array; $bytes_var:ident, $param_var:ident, $start:expr, $end:expr) => (
+            (bytes_array; $bytes_var:ident, $param_var:ident, $start:expr, $end:expr) => {
                 let $param_var = decode_bytes_array(
                     &$bytes_var[($start.as_u64() as usize)..($end.as_u64() as usize)],
                 );
-            );
-            (bytes_array; $bytes_var:ident, $param_var:ident, $start:expr) => (
-                let $param_var = decode_bytes_array(
-                    &$bytes_var[($start.as_u64() as usize)..$bytes_var.len()],
-                );
-            );
-            (bytes; $bytes_var:ident, $param_var:ident, $start:expr, $end:expr) => (
-                let $param_var = decode_bytes(
-                    &$bytes_var[($start.as_u64() as usize)..($end.as_u64() as usize)],
-                );
-            );
-            (bytes; $bytes_var:ident, $param_var:ident, $start:expr) => (
-                let $param_var = decode_bytes(
-                    &$bytes_var[($start.as_u64() as usize)..$bytes_var.len()],
-                );
-            );
+            };
+            (bytes_array; $bytes_var:ident, $param_var:ident, $start:expr) => {
+                let $param_var =
+                    decode_bytes_array(&$bytes_var[($start.as_u64() as usize)..$bytes_var.len()]);
+            };
+            (bytes; $bytes_var:ident, $param_var:ident, $start:expr, $end:expr) => {
+                let $param_var =
+                    decode_bytes(&$bytes_var[($start.as_u64() as usize)..($end.as_u64() as usize)]);
+            };
+            (bytes; $bytes_var:ident, $param_var:ident, $start:expr) => {
+                let $param_var =
+                    decode_bytes(&$bytes_var[($start.as_u64() as usize)..$bytes_var.len()]);
+            };
         }
 
         include!(concat!(env!("OUT_DIR"), "/rlay.ontology.web3_applied.rs"));
@@ -310,9 +305,9 @@ pub mod ontology {
     #[cfg(feature = "std")]
     pub mod v0 {
         use super::*;
-        use ontology::compact::FormatCompact;
-        use integer_encoding::VarIntWriter;
+        use crate::ontology::compact::FormatCompact;
         use integer_encoding::VarIntReader;
+        use integer_encoding::VarIntWriter;
 
         include!(concat!(env!("OUT_DIR"), "/rlay.ontology.v0.rs"));
     }

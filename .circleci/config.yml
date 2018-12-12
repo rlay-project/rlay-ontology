@@ -36,12 +36,10 @@ jobs:
           command: curl https://sh.rustup.rs -sSf | sh /dev/stdin --default-toolchain $(cat rust-toolchain) -y --verbose
       - run: echo 'export PATH=$HOME/.cargo/bin:$PWD/bin:$PATH' >> $BASH_ENV
       - run:
-          name: Install different toolchains and targets
+          name: Install different rustup components
           command: |
-            make toolchains
-      - run:
-          name: Install cargo-web, etc.
-          command: make cargo-binaries
+            rustup component add clippy
+            rustup component add rustfmt
       - run:
           name: Fetch dependencies (for cache)
           command: cargo fetch
@@ -57,16 +55,14 @@ jobs:
 
       # run tests!
       - run:
-          name: Test crate bay
-          command: cargo test
-      - run:
           name: Test crate rlay_ontology
           command: cd rlay_ontology && cargo test
       - run:
-          name: Check if rlay_ontology_stdweb builds
-          command: cd rlay_ontology_stdweb && cargo web build --target wasm32-unknown-unknown
+          name: Test crate rlay_ontology (web3_compat)
+          command: cd rlay_ontology && cargo test --features web3_compat
 
       - run:
           name: Clippy lint
-          command: make lint
-
+          command: |
+            cargo fmt --package rlay_ontology -- --check
+            cd rlay_ontology && cargo clippy
