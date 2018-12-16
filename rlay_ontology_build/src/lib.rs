@@ -218,6 +218,21 @@ mod main {
             };
             write!(writer, "{}", trait_impl).unwrap();
         }
+        // impl Canonicalize
+        {
+            let variants = variants.clone();
+            let trait_impl: TokenStream = parse_quote! {
+                impl Canonicalize for Entity {
+                    fn canonicalize(&mut self) {
+                        match self {
+                            #(Entity::#variants(ref mut ent) => ent.canonicalize()),
+                            *
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", trait_impl).unwrap();
+        }
         // impl Entity
         {
             let variants = variants.clone();
