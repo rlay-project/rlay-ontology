@@ -889,7 +889,7 @@ dependencies = [
 
 [[package]]
 name = "rlay_ontology"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "bytes 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "cid 0.2.3 (git+https://github.com/hobofan/rust-cid?rev=27798e5245c234dae1236470a5a5568cb067a216)",
@@ -900,7 +900,7 @@ dependencies = [
  "prost 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost-derive 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "pwasm-std 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rlay_ontology_build 0.2.1",
+ "rlay_ontology_build 0.2.2",
  "rustc-hex 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_bytes 0.10.4 (git+https://github.com/hobofan/bytes?branch=nightly-2018-11-08)",
@@ -913,7 +913,7 @@ dependencies = [
 
 [[package]]
 name = "rlay_ontology_build"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "heck 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc-macro2 0.4.21 (registry+https://github.com/rust-lang/crates.io-index)",

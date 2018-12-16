@@ -1,6 +1,6 @@
 [package]
 name = "rlay_ontology"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Maximilian Goisser <goisser94@gmail.com>"]
 edition = "2018"
 
