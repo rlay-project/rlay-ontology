@@ -55,13 +55,13 @@
       "name": "ObjectComplementOf",
       "fields": [
         {
-          "name": "annotations",
-          "kind": "Annotation[]"
-        },
-        {
           "name": "complementOf",
           "kind": "ClassExpression",
           "required": true
+        },
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
         },
         {
           "name": "superClassExpression",
@@ -396,24 +396,24 @@
           "kind": "ClassAssertion[]"
         },
         {
-          "name": "data_property_assertions",
-          "kind": "DataPropertyAssertion[]"
-        },
-        {
           "name": "negative_class_assertions",
           "kind": "NegativeClassAssertion[]"
         },
         {
-          "name": "negative_data_property_assertions",
-          "kind": "NegativeDataPropertyAssertion[]"
+          "name": "object_property_assertions",
+          "kind": "ObjectPropertyAssertion[]"
         },
         {
           "name": "negative_object_property_assertions",
           "kind": "NegativeObjectPropertyAssertion[]"
         },
         {
-          "name": "object_property_assertions",
-          "kind": "ObjectPropertyAssertion[]"
+          "name": "data_property_assertions",
+          "kind": "DataPropertyAssertion[]"
+        },
+        {
+          "name": "negative_data_property_assertions",
+          "kind": "NegativeDataPropertyAssertion[]"
         }
       ],
       "kindId": 22,
@@ -440,13 +440,13 @@
           "kind": "Annotation[]"
         },
         {
+          "name": "subject",
+          "kind": "IRI"
+        },
+        {
           "name": "class",
           "kind": "IRI",
           "required": true
-        },
-        {
-          "name": "subject",
-          "kind": "IRI"
         }
       ],
       "kindId": 24,
@@ -461,13 +461,13 @@
           "kind": "Annotation[]"
         },
         {
+          "name": "subject",
+          "kind": "IRI"
+        },
+        {
           "name": "class",
           "kind": "IRI",
           "required": true
-        },
-        {
-          "name": "subject",
-          "kind": "IRI"
         }
       ],
       "kindId": 25,
@@ -482,11 +482,11 @@
           "kind": "Annotation[]"
         },
         {
-          "name": "property",
+          "name": "subject",
           "kind": "IRI"
         },
         {
-          "name": "subject",
+          "name": "property",
           "kind": "IRI"
         },
         {
@@ -506,11 +506,11 @@
           "kind": "Annotation[]"
         },
         {
-          "name": "property",
+          "name": "subject",
           "kind": "IRI"
         },
         {
-          "name": "subject",
+          "name": "property",
           "kind": "IRI"
         },
         {
@@ -530,11 +530,11 @@
           "kind": "Annotation[]"
         },
         {
-          "name": "property",
+          "name": "subject",
           "kind": "IRI"
         },
         {
-          "name": "subject",
+          "name": "property",
           "kind": "IRI"
         },
         {
@@ -554,11 +554,11 @@
           "kind": "Annotation[]"
         },
         {
-          "name": "property",
+          "name": "subject",
           "kind": "IRI"
         },
         {
-          "name": "subject",
+          "name": "property",
           "kind": "IRI"
         },
         {
@@ -578,11 +578,11 @@
           "kind": "Annotation[]"
         },
         {
-          "name": "property",
+          "name": "subject",
           "kind": "IRI"
         },
         {
-          "name": "subject",
+          "name": "property",
           "kind": "IRI"
         },
         {
@@ -602,11 +602,11 @@
           "kind": "Annotation[]"
         },
         {
-          "name": "property",
+          "name": "subject",
           "kind": "IRI"
         },
         {
-          "name": "subject",
+          "name": "property",
           "kind": "IRI"
         },
         {

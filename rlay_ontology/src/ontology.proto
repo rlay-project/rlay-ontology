@@ -18,8 +18,8 @@ message ObjectUnionOf {
 }
 
 message ObjectComplementOf {
-  repeated bytes annotations = 1;
-  required bytes complementOf = 2;
+  required bytes complementOf = 1;
+  repeated bytes annotations = 2;
   repeated bytes superClassExpression = 3;
 }
 
@@ -117,11 +117,11 @@ message Annotation {
 message Individual {
   repeated bytes annotations = 1;
   repeated bytes class_assertions = 2;
-  repeated bytes data_property_assertions = 3;
-  repeated bytes negative_class_assertions = 4;
-  repeated bytes negative_data_property_assertions = 5;
-  repeated bytes negative_object_property_assertions = 6;
-  repeated bytes object_property_assertions = 7;
+  repeated bytes negative_class_assertions = 3;
+  repeated bytes object_property_assertions = 4;
+  repeated bytes negative_object_property_assertions = 5;
+  repeated bytes data_property_assertions = 6;
+  repeated bytes negative_data_property_assertions = 7;
 }
 
 message AnnotationProperty {
@@ -130,55 +130,55 @@ message AnnotationProperty {
 
 message ClassAssertion {
   repeated bytes annotations = 1;
-  required bytes class = 2;
-  optional bytes subject = 3;
+  optional bytes subject = 2;
+  required bytes class = 3;
 }
 
 message NegativeClassAssertion {
   repeated bytes annotations = 1;
-  required bytes class = 2;
-  optional bytes subject = 3;
+  optional bytes subject = 2;
+  required bytes class = 3;
 }
 
 message ObjectPropertyAssertion {
   repeated bytes annotations = 1;
-  optional bytes property = 2;
-  optional bytes subject = 3;
+  optional bytes subject = 2;
+  optional bytes property = 3;
   optional bytes target = 4;
 }
 
 message NegativeObjectPropertyAssertion {
   repeated bytes annotations = 1;
-  optional bytes property = 2;
-  optional bytes subject = 3;
+  optional bytes subject = 2;
+  optional bytes property = 3;
   optional bytes target = 4;
 }
 
 message DataPropertyAssertion {
   repeated bytes annotations = 1;
-  optional bytes property = 2;
-  optional bytes subject = 3;
+  optional bytes subject = 2;
+  optional bytes property = 3;
   optional bytes target = 4;
 }
 
 message NegativeDataPropertyAssertion {
   repeated bytes annotations = 1;
-  optional bytes property = 2;
-  optional bytes subject = 3;
+  optional bytes subject = 2;
+  optional bytes property = 3;
   optional bytes target = 4;
 }
 
 message AnnotationAssertion {
   repeated bytes annotations = 1;
-  optional bytes property = 2;
-  optional bytes subject = 3;
+  optional bytes subject = 2;
+  optional bytes property = 3;
   optional bytes value = 4;
 }
 
 message NegativeAnnotationAssertion {
   repeated bytes annotations = 1;
-  optional bytes property = 2;
-  optional bytes subject = 3;
+  optional bytes subject = 2;
+  optional bytes property = 3;
   optional bytes value = 4;
 }
 
