@@ -390,6 +390,30 @@
         {
           "name": "annotations",
           "kind": "Annotation[]"
+        },
+        {
+          "name": "class_assertions",
+          "kind": "ClassAssertion[]"
+        },
+        {
+          "name": "data_property_assertions",
+          "kind": "DataPropertyAssertion[]"
+        },
+        {
+          "name": "negative_class_assertions",
+          "kind": "NegativeClassAssertion[]"
+        },
+        {
+          "name": "negative_data_property_assertions",
+          "kind": "NegativeDataPropertyAssertion[]"
+        },
+        {
+          "name": "negative_object_property_assertions",
+          "kind": "NegativeObjectPropertyAssertion[]"
+        },
+        {
+          "name": "object_property_assertions",
+          "kind": "ObjectPropertyAssertion[]"
         }
       ],
       "kindId": 22,
@@ -422,8 +446,7 @@
         },
         {
           "name": "subject",
-          "kind": "IRI",
-          "required": true
+          "kind": "IRI"
         }
       ],
       "kindId": 24,
@@ -444,8 +467,7 @@
         },
         {
           "name": "subject",
-          "kind": "IRI",
-          "required": true
+          "kind": "IRI"
         }
       ],
       "kindId": 25,
@@ -547,6 +569,54 @@
       "kindId": 29,
       "cidPrefix": 49181,
       "cidPrefixHex": "9d8003"
+    },
+    {
+      "name": "AnnotationAssertion",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "property",
+          "kind": "IRI"
+        },
+        {
+          "name": "subject",
+          "kind": "IRI"
+        },
+        {
+          "name": "value",
+          "kind": "IRI"
+        }
+      ],
+      "kindId": 30,
+      "cidPrefix": 49182,
+      "cidPrefixHex": "9e8003"
+    },
+    {
+      "name": "NegativeAnnotationAssertion",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "property",
+          "kind": "IRI"
+        },
+        {
+          "name": "subject",
+          "kind": "IRI"
+        },
+        {
+          "name": "value",
+          "kind": "IRI"
+        }
+      ],
+      "kindId": 31,
+      "cidPrefix": 49183,
+      "cidPrefixHex": "9f8003"
     }
   ]
 }

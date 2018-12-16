@@ -167,6 +167,30 @@ const buildGrammar = parsedGrammar => {
         name: 'annotations',
         kind: 'Annotation[]',
       },
+      {
+        name: 'class_assertions',
+        kind: 'ClassAssertion[]',
+      },
+      {
+        name: 'negative_class_assertions',
+        kind: 'NegativeClassAssertion[]',
+      },
+      {
+        name: 'object_property_assertions',
+        kind: 'ObjectPropertyAssertion[]',
+      },
+      {
+        name: 'negative_object_property_assertions',
+        kind: 'NegativeObjectPropertyAssertion[]',
+      },
+      {
+        name: 'data_property_assertions',
+        kind: 'DataPropertyAssertion[]',
+      },
+      {
+        name: 'negative_data_property_assertions',
+        kind: 'NegativeDataPropertyAssertion[]',
+      },
     ],
   });
   otherKinds.push({
@@ -188,7 +212,6 @@ const buildGrammar = parsedGrammar => {
       {
         name: 'subject',
         kind: 'IRI',
-        required: true,
       },
       {
         name: 'class',
@@ -207,7 +230,6 @@ const buildGrammar = parsedGrammar => {
       {
         name: 'subject',
         kind: 'IRI',
-        required: true,
       },
       {
         name: 'class',
@@ -296,6 +318,48 @@ const buildGrammar = parsedGrammar => {
       },
       {
         name: 'target',
+        kind: 'IRI',
+      },
+    ],
+  });
+  otherKinds.push({
+    name: 'AnnotationAssertion',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'subject',
+        kind: 'IRI',
+      },
+      {
+        name: 'property',
+        kind: 'IRI',
+      },
+      {
+        name: 'value',
+        kind: 'IRI',
+      },
+    ],
+  });
+  otherKinds.push({
+    name: 'NegativeAnnotationAssertion',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'subject',
+        kind: 'IRI',
+      },
+      {
+        name: 'property',
+        kind: 'IRI',
+      },
+      {
+        name: 'value',
         kind: 'IRI',
       },
     ],
