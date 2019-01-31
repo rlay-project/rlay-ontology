@@ -345,7 +345,8 @@ fn write_format_variant_wrapper<W: Write>(
         syn::parse_str(&format!("{}Format{}", kind_name, format_suffix)).unwrap();
     let inner_ty: syn::Type = syn::parse_str(kind_name).unwrap();
     let wrapper_struct: TokenStream = parse_quote! {
-        #[derive(Debug, Clone, PartialEq)]
+        #[cfg_attr(feature = "wasm_bindgen", wasm_bindgen)]
+        #[derive(Debug, Clone, PartialEq, Default)]
         pub struct #wrapper_ty {
             inner: #inner_ty
         }
