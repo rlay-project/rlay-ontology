@@ -329,7 +329,7 @@ mod entities {
                 #fields
             }
         };
-        write!(writer, "{}", entity_struct);
+        write!(writer, "{}", entity_struct).unwrap();
     }
 }
 
@@ -350,7 +350,7 @@ fn write_format_variant_wrapper<W: Write>(
             inner: #inner_ty
         }
     };
-    write!(writer, "{}", wrapper_struct);
+    write!(writer, "{}", wrapper_struct).unwrap();
     // From
     {
         let trait_impl: TokenStream = parse_quote! {
@@ -362,7 +362,7 @@ fn write_format_variant_wrapper<W: Write>(
                 }
             }
         };
-        write!(writer, "{}", trait_impl);
+        write!(writer, "{}", trait_impl).unwrap();
     }
     // Into
     {
@@ -373,7 +373,7 @@ fn write_format_variant_wrapper<W: Write>(
                 }
             }
         };
-        write!(writer, "{}", trait_impl);
+        write!(writer, "{}", trait_impl).unwrap();
     }
     if write_conversion_trait {
         let conversion_trait: syn::Type =
@@ -397,7 +397,7 @@ fn write_format_variant_wrapper<W: Write>(
                 }
             }
         };
-        write!(writer, "{}", trait_impl);
+        write!(writer, "{}", trait_impl).unwrap();
     }
 }
 
@@ -696,146 +696,114 @@ mod web3 {
         let variants = kind_names_types(&kind_names);
         let wrapper_variants: Vec<syn::Type> = kind_names
             .iter()
-            .map(|n| syn::parse_str(&format!("{}FormatWeb3", n)).unwrap())
+            .map(|n| syn::parse_str(&format!("FormatWeb3<{}>", n)).unwrap())
             .collect();
 
-        // EntityFormatWeb3
+        // SerializeFormatWeb3 for Entity
         {
             let variants = variants.clone();
+            let variants2 = variants.clone();
+            let variants3 = variants.clone();
             let wrapper_variants = wrapper_variants.clone();
             let type_impl: TokenStream = parse_quote! {
-                #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-                #[serde(tag = "type")]
-                pub enum EntityFormatWeb3 {
-                    #(#variants(#wrapper_variants)),
-                    *
+                impl SerializeFormatWeb3 for Entity {
+                    fn serialize_format_web3<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                        where
+                        S: serde::Serializer,
+                    {
+                        #[derive(Serialize)]
+                        #[serde(tag = "type")]
+                        pub enum EntityFormatWeb3 {
+                            #(#variants(#wrapper_variants)),
+                            *
+                        }
+
+                        impl Into<EntityFormatWeb3> for Entity {
+                            fn into(self) -> EntityFormatWeb3 {
+                                match self {
+                                    #(Entity::#variants3(ent) => EntityFormatWeb3::#variants2(ent.into())),
+                                    *
+                                }
+                            }
+                        }
+
+                        let proxy: EntityFormatWeb3 = self.to_owned().into();
+                        proxy.serialize(serializer)
+                    }
                 }
             };
             write!(writer, "{}", type_impl).unwrap();
         }
-        // From
+        // DeserializeFormatWeb3 for Entity
         {
             let variants = variants.clone();
             let variants2 = variants.clone();
-            let from_impl: TokenStream = parse_quote! {
-                impl From<Entity> for EntityFormatWeb3 {
-                    fn from(original: Entity) -> Self {
-                        match original {
-                            #(Entity::#variants(ent) => EntityFormatWeb3::#variants2(ent.into())),
+            let variants3 = variants.clone();
+            let wrapper_variants = wrapper_variants.clone();
+            let type_impl: TokenStream = parse_quote! {
+                impl<'de> DeserializeFormatWeb3<'de> for Entity {
+                    fn deserialize_format_web3<D>(deserializer: D) -> Result<Self, D::Error>
+                    where
+                        D: Deserializer<'de>,
+                    {
+                        #[derive(Deserialize)]
+                        #[serde(tag = "type")]
+                        pub enum EntityFormatWeb3 {
+                            #(#variants(#wrapper_variants)),
                             *
                         }
-                    }
-                }
-            };
-            write!(writer, "{}", from_impl).unwrap();
-        }
-        // Into
-        {
-            let variants = variants.clone();
-            let variants2 = variants.clone();
-            let into_impl: TokenStream = parse_quote! {
-                impl Into<Entity> for EntityFormatWeb3 {
-                    fn into(self) -> Entity {
-                        match self {
-                            #(EntityFormatWeb3::#variants(ent) => Entity::#variants2(ent.into())),
-                            *
+
+                        impl From<EntityFormatWeb3> for Entity {
+                            fn from(original: EntityFormatWeb3) -> Entity {
+                                match original {
+                                    #(EntityFormatWeb3::#variants3(ent) => Entity::#variants2(ent.0)),
+                                    *
+                                }
+                            }
                         }
+
+                        let deserialized = EntityFormatWeb3::deserialize(deserializer)?;
+                        Ok(deserialized.into())
                     }
                 }
             };
-            write!(writer, "{}", into_impl).unwrap();
-        }
-        // FormatWeb3
-        {
-            let trait_impl: TokenStream = parse_quote! {
-                impl<'a> FormatWeb3<'a> for Entity {
-                    type Formatted = EntityFormatWeb3;
-
-                    fn to_web3_format(self) -> Self::Formatted {
-                        self.into()
-                    }
-
-                    fn from_web3_format(formatted: Self::Formatted) -> Self {
-                        formatted.into()
-                    }
-                }
-            };
-            write!(writer, "{}", trait_impl).unwrap();
+            write!(writer, "{}", type_impl).unwrap();
         }
     }
 
     fn write_variant_format_web3<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
-        write_format_variant_wrapper(writer, "Web3", kind_name, fields, true);
-        write_format_web3_impl_serialize(writer, kind_name, fields);
-        write_format_web3_impl_deserialize(writer, kind_name, fields);
+        write_format_web3_impl_serialize_format_web3(writer, kind_name, fields);
+        write_format_web3_impl_deserialize_format_web3(writer, kind_name, fields);
     }
 
-    fn write_format_web3_impl_serialize<W: Write>(
+    fn write_format_web3_impl_serialize_format_web3<W: Write>(
         writer: &mut W,
         kind_name: &str,
         fields: &[Field],
     ) {
-        let helper_fields: TokenStream = fields
-            .iter()
-            .map(|field| {
-                let field_ident: syn::Ident = syn::parse_str(&field.name).unwrap();
-                let tokens: TokenStream = match (field.is_array_kind(), field.required) {
-                    (true, _) => parse_quote!(pub #field_ident: Vec<HexString<'a>>,),
-                    (false, true) => parse_quote!(pub #field_ident: HexString<'a>,),
-                    (false, false) => parse_quote!(pub #field_ident: Option<HexString<'a>>,),
-                };
-                tokens
-            })
-            .collect();
-
-        let wrap_helper_fields: TokenStream = fields
-            .iter()
-            .map(|field| {
-                let helper_field_ident: syn::Ident = syn::parse_str(&field.name).unwrap();
-                let field_ident: syn::Ident = syn::parse_str(&field.name.to_snake_case()).unwrap();
-                let tokens: TokenStream = match (field.is_array_kind(), field.required) {
-                    (true, _) => {
-                        parse_quote!(#helper_field_ident: self.inner.#field_ident.iter().map(|n| HexString::wrap(n)).collect(),)
-                    }
-                    (false, true) => {
-                        parse_quote!(#helper_field_ident: HexString::wrap(&self.inner.#field_ident),)
-                    }
-                    (false, false) => {
-                        parse_quote!(#helper_field_ident: HexString::wrap_option(self.inner.#field_ident.as_ref()),)
-                    }
-                };
-                tokens
-            })
-            .collect();
-
-        let wrapper_ty: syn::Type = syn::parse_str(&format!("{}FormatWeb3", kind_name)).unwrap();
+        let kind_type: syn::Type = syn::parse_str(kind_name).unwrap();
+        let field_num = fields.len();
+        let field_idents: Vec<syn::Ident> =
+            fields.iter().map(|field| field.field_ident()).collect();
+        let field_names: Vec<String> = fields.iter().map(|n| n.name.to_string()).collect();
         let trait_impl: TokenStream = parse_quote! {
-            impl ::serde::Serialize for #wrapper_ty {
-                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            impl SerializeFormatWeb3 for #kind_type {
+                fn serialize_format_web3<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
-                    S: ::serde::Serializer,
+                    S: serde::Serializer,
                 {
-                    #[derive(Serialize)]
-                    #[allow(non_snake_case)]
-                    struct SerializeHelper<'a> {
-                        pub cid: Option<HexString<'a>>,
-                        #helper_fields
-                    }
+                    let mut s = serializer.serialize_struct(#kind_name, #field_num)?;
+                    #(s.serialize_field(#field_names, &FormatWeb3(&self.#field_idents))?;)*
 
-                    let cid_option = self.inner.to_cid().ok().map(|n| n.to_bytes());
-                    let ext = SerializeHelper {
-                        cid: HexString::wrap_option(cid_option.as_ref()),
-                        #wrap_helper_fields
-                    };
-
-                    Ok(ext.serialize(serializer)?)
+                    s.end()
                 }
             }
         };
+
         write!(writer, "{}", trait_impl).unwrap();
     }
 
-    fn write_format_web3_impl_deserialize<W: Write>(
+    fn write_format_web3_impl_deserialize_format_web3<W: Write>(
         writer: &mut W,
         kind_name: &str,
         fields: &[Field],
@@ -852,10 +820,7 @@ mod web3 {
             .iter()
             .map(|field| {
                 let field_ident = field.field_ident();
-                let stmt: TokenStream = match field.is_array_kind() {
-                    true => parse_quote!(let mut #field_ident: Option<Vec<String>> = None;),
-                    false => parse_quote!(let mut #field_ident: Option<String> = None;),
-                };
+                let stmt: TokenStream = parse_quote!(let mut #field_ident: Option<_> = None;);
                 stmt
             })
             .collect();
@@ -863,11 +828,29 @@ mod web3 {
         // tries to extract set the field variable if the field exists in the map
         let field_names_raw: Vec<String> = fields.iter().map(|n| n.name.clone()).collect();
         let field_names_raw2 = field_names_raw.clone();
-        let field_names_snake: Vec<syn::Ident> = fields
+        let field_names_snake: Vec<syn::Ident> = fields.iter().map(|n| n.field_ident()).collect();
+        let extract_key_blocks: Vec<TokenStream> = fields
             .iter()
-            .map(|n| syn::parse_str(&n.name.to_snake_case()).unwrap())
+            .map(|field| {
+                let field_ident = field.field_ident();
+                let stmt: TokenStream = match (field.is_array_kind(), field.required) {
+                    (true, _) => parse_quote! {
+                        let inner_val: Vec<FormatWeb3<Vec<u8>>> = map.next_value()?;
+                        let inner_val: Vec<Vec<u8>> = inner_val.into_iter().map(|n| n.0).collect();
+                        #field_ident = Some(inner_val);
+                    },
+                    (false, true) => parse_quote! {
+                        let inner_val: FormatWeb3<Vec<u8>> = map.next_value()?;
+                        #field_ident = Some(inner_val.0);
+                    },
+                    (false, false) => parse_quote! {
+                        let inner_val: Option<FormatWeb3<Vec<u8>>> = map.next_value()?;
+                        #field_ident = Some(inner_val.map(|n| n.0));
+                    },
+                };
+                stmt
+            })
             .collect();
-        let field_names_snake2 = field_names_snake.clone();
         let extract_keys_loop: TokenStream = parse_quote! {
             loop {
                 let key = map.next_key::<String>()?;
@@ -877,7 +860,7 @@ mod web3 {
                             if #field_names_snake.is_some() {{
                                 return Err(de::Error::duplicate_field(#field_names_raw2));
                             }}
-                            #field_names_snake2 = Some(map.next_value()?);
+                            #extract_key_blocks
                         }
                      )*
                     Some(ref unknown) => {
@@ -888,59 +871,28 @@ mod web3 {
             }
         };
 
-        // applies appropiate deserialize call to each field accoring to type
-        let field_deserialize_calls: TokenStream = fields
+        let enforce_required_fields: Vec<TokenStream> = fields
             .iter()
             .map(|field| {
                 let field_name_raw = &field.name;
-                let field_name_snake: syn::Ident =
-                    syn::parse_str(&field.name.to_snake_case()).unwrap();
-
-                let field_deserialize_tokens: TokenStream = match field.is_array_kind() {
-                    true => {
-                        parse_quote!{
-                            let #field_name_snake = #field_name_snake
-                                .unwrap_or(Vec::new())
-                                .into_iter()
-                                .map(|n| {{
-                                    n[2..].from_hex().map_err(|_| {{
-                                        de::Error::invalid_value(
-                                            de::Unexpected::Other("invalid hexstring"),
-                                            &"hexstring",
-                                        )
-                                    }})
-                                }})
-                                .collect::<Result<_, _>>()?;
-                        }
-                    }
-                    false => {
-                        let mut tokens = parse_quote!{
-                            let #field_name_snake = #field_name_snake
-                                .map(|n| {{
-                                    n[2..].from_hex().map_err(|_| {{
-                                        de::Error::invalid_value(
-                                            de::Unexpected::Other("invalid hexstring"),
-                                            &"hexstring",
-                                        )
-                                    }})
-                                }}).map_or(Ok(None), |v| v.map(Some))?;
-                        };
-                        if field.required {
-                            tokens = parse_quote!{
-                                #tokens
-
-                                let #field_name_snake = #field_name_snake.ok_or(de::Error::missing_field(#field_name_raw))?;
-                            }
-                        }
-                        tokens
-                    }
+                let field_ident = field.field_ident();
+                let stmt: TokenStream = match field.required {
+                    true => parse_quote! {
+                        let #field_ident = #field_ident.ok_or(de::Error::missing_field(#field_name_raw))?;
+                    },
+                    false => parse_quote! {
+                        let #field_ident = #field_ident.unwrap_or_default();
+                    },
                 };
-                field_deserialize_tokens
+                stmt
             })
             .collect();
+        let enforce_required_fields: TokenStream = parse_quote! {
+            #(#enforce_required_fields)
+            *
+        };
 
         let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
-        let wrapper_ty: syn::Type = syn::parse_str(&format!("{}FormatWeb3", kind_name)).unwrap();
         let field_idents: Vec<_> = fields.iter().map(|n| n.field_ident()).collect();
         let constructor_call: TokenStream = parse_quote! {
             Ok(#kind_ty {
@@ -951,8 +903,8 @@ mod web3 {
 
         let expecting_msg = format!("struct {}", kind_name);
         let trait_impl: TokenStream = parse_quote! {
-            impl<'de> Deserialize<'de> for #wrapper_ty {
-                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            impl<'de> DeserializeFormatWeb3<'de> for #kind_ty {
+                fn deserialize_format_web3<D>(deserializer: D) -> Result<Self, D::Error>
                     where D: Deserializer<'de>,
                 {
                     struct ThisEntityVisitor;
@@ -971,12 +923,12 @@ mod web3 {
                         {
                             #initialize_empty_fields
                             #extract_keys_loop
-                            #field_deserialize_calls
+                            #enforce_required_fields
                             #constructor_call
 
                         }
                     }
-                    deserializer.deserialize_struct(#kind_name, FIELDS, ThisEntityVisitor).map(|n| n.into())
+                    deserializer.deserialize_struct(#kind_name, FIELDS, ThisEntityVisitor)
                 }
             }
         };

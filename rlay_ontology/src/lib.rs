@@ -126,42 +126,130 @@ pub mod ontology {
         use super::*;
         use rustc_hex::{FromHex, ToHex};
         use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
+        use serde::ser::{Serialize, SerializeSeq, SerializeStruct};
 
         use ::web3::types::U256;
 
-        struct HexString<'a> {
-            pub inner: &'a [u8],
+        #[derive(Clone)]
+        pub struct FormatWeb3<T: Clone>(pub T);
+
+        pub trait SerializeFormatWeb3 {
+            fn serialize_format_web3<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer;
         }
 
-        impl<'a> HexString<'a> {
-            pub fn wrap(bytes: &'a [u8]) -> Self {
-                HexString { inner: bytes }
+        impl<T: SerializeFormatWeb3 + Clone> serde::Serialize for FormatWeb3<T> {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                SerializeFormatWeb3::serialize_format_web3(&self.0, serializer)
             }
+        }
 
-            pub fn wrap_option(bytes: Option<&'a Vec<u8>>) -> Option<Self> {
-                match bytes {
-                    Some(bytes) => Some(HexString { inner: bytes }),
-                    None => None,
+        impl<T: SerializeFormatWeb3 + Clone> From<T> for FormatWeb3<T> {
+            fn from(original: T) -> Self {
+                FormatWeb3(original)
+            }
+        }
+
+        impl<T: SerializeFormatWeb3 + Clone> SerializeFormatWeb3 for &T {
+            fn serialize_format_web3<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                SerializeFormatWeb3::serialize_format_web3(*self, serializer)
+            }
+        }
+
+        impl<T: SerializeFormatWeb3 + Clone> SerializeFormatWeb3 for Vec<T> {
+            fn serialize_format_web3<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                let mut seq = serializer.serialize_seq(Some(self.len()))?;
+                for entry in self.iter() {
+                    seq.serialize_element(&FormatWeb3(entry))?;
+                }
+                seq.end()
+            }
+        }
+
+        impl<T: SerializeFormatWeb3 + Clone> SerializeFormatWeb3 for Option<T> {
+            fn serialize_format_web3<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                match self {
+                    Some(inner) => SerializeFormatWeb3::serialize_format_web3(inner, serializer),
+                    None => serializer.serialize_none(),
                 }
             }
         }
 
-        impl<'a> ::serde::Serialize for HexString<'a> {
-            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        impl SerializeFormatWeb3 for Vec<u8> {
+            fn serialize_format_web3<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
-                S: ::serde::Serializer,
+                S: serde::Serializer,
             {
-                let hex: String = self.inner.to_hex();
-                Ok(serializer.serialize_str(&format!("0x{}", &hex))?)
+                serializer.serialize_str(&format!("0x{}", self.to_hex::<String>()))
             }
         }
 
-        pub trait FormatWeb3<'a> {
-            type Formatted: serde::Deserialize<'a> + serde::Serialize;
+        pub trait DeserializeFormatWeb3<'de>: Sized {
+            fn deserialize_format_web3<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'de>;
+        }
 
-            fn to_web3_format(self) -> Self::Formatted;
+        impl<'de, T: DeserializeFormatWeb3<'de> + Clone> Deserialize<'de> for FormatWeb3<T> {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                DeserializeFormatWeb3::deserialize_format_web3(deserializer)
+            }
+        }
 
-            fn from_web3_format(formatted: Self::Formatted) -> Self;
+        impl<'de, T: DeserializeFormatWeb3<'de> + Clone> DeserializeFormatWeb3<'de> for FormatWeb3<T> {
+            fn deserialize_format_web3<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                Ok(FormatWeb3(DeserializeFormatWeb3::deserialize_format_web3(
+                    deserializer,
+                )?))
+            }
+        }
+
+        impl<'de> DeserializeFormatWeb3<'de> for Vec<u8> {
+            fn deserialize_format_web3<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                struct StringVisitor;
+
+                impl<'de> Visitor<'de> for StringVisitor {
+                    type Value = Vec<u8>;
+
+                    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        write!(formatter, "a hex encoded string prefixed by 0x")
+                    }
+
+                    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+                    where
+                        E: de::Error,
+                    {
+                        if &s[0..2] != "0x" {
+                            return Err(de::Error::invalid_value(de::Unexpected::Str(s), &self));
+                        }
+                        Ok(s[2..].from_hex().map_err(de::Error::custom)?)
+                    }
+                }
+
+                deserializer.deserialize_str(StringVisitor)
+            }
         }
 
         /// Decode a single ethabi param of type bytes
