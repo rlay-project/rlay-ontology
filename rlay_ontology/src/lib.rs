@@ -124,11 +124,10 @@ pub mod ontology {
     /// Serialization format compatible with the Web3 ecosystem, specifically the Web3 JSONRPC.
     pub mod web3 {
         use super::*;
+        use ethereum_types::U256;
         use rustc_hex::{FromHex, ToHex};
         use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
         use serde::ser::{Serialize, SerializeSeq, SerializeStruct};
-
-        use ::web3::types::U256;
 
         #[derive(Clone)]
         pub struct FormatWeb3<T: Clone>(pub T);
