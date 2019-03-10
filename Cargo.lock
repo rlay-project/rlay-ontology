@@ -105,8 +105,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "cid"
-version = "0.2.3"
-source = "git+https://github.com/hobofan/rust-cid?rev=27798e5245c234dae1236470a5a5568cb067a216#27798e5245c234dae1236470a5a5568cb067a216"
+version = "0.3.0"
+source = "git+https://github.com/hobofan/rust-cid?rev=87332277d2cdb5b7cb6484c23b5711c28b44c684#87332277d2cdb5b7cb6484c23b5711c28b44c684"
 dependencies = [
  "integer-encoding 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "multibase 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -892,7 +892,7 @@ name = "rlay_ontology"
 version = "0.2.2"
 dependencies = [
  "bytes 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "cid 0.2.3 (git+https://github.com/hobofan/rust-cid?rev=27798e5245c234dae1236470a5a5568cb067a216)",
+ "cid 0.3.0 (git+https://github.com/hobofan/rust-cid?rev=87332277d2cdb5b7cb6484c23b5711c28b44c684)",
  "integer-encoding 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "multibase 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1649,7 +1649,7 @@ dependencies = [
 "checksum bytes 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)" = "0ce55bd354b095246fc34caf4e9e242f5297a7fd938b090cadfea6eee614aa62"
 "checksum cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)" = "f159dfd43363c4d08055a07703eb7a3406b0dac4d0584d96965a3262db3c9d16"
 "checksum cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "082bb9b28e00d3c9d39cc03e64ce4cea0f1bb9b3fde493f0cbc008472d22bdf4"
-"checksum cid 0.2.3 (git+https://github.com/hobofan/rust-cid?rev=27798e5245c234dae1236470a5a5568cb067a216)" = "<none>"
+"checksum cid 0.3.0 (git+https://github.com/hobofan/rust-cid?rev=87332277d2cdb5b7cb6484c23b5711c28b44c684)" = "<none>"
 "checksum cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 "checksum core-foundation 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "25bfd746d203017f7d5cbd31ee5d8e17f94b6521c7af77ece6c9e4b2d4b16c67"
 "checksum core-foundation-sys 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "065a5d7ffdcbc8fa145d6f0746f3555025b9097a9e9cda59f7467abae670c78d"
