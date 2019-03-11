@@ -41,6 +41,9 @@ jobs:
             rustup component add clippy
             rustup component add rustfmt
       - run:
+          name: Install wasm-pack
+          command: cargo install --git https://github.com/hobofan/wasm-pack.git --branch feat/multiple_targets
+      - run:
           name: Fetch dependencies (for cache)
           command: cargo fetch
 
@@ -60,6 +63,13 @@ jobs:
       - run:
           name: Test crate rlay_ontology (web3_compat)
           command: cd rlay_ontology && cargo test --features web3_compat
+      - run:
+          name: Test crate rlay_ontology_js / @rlay/ontology
+          working_directory: rlay_ontology_js
+          command: |
+            wasm-pack build --target nodejs
+            node prepare-pkg.js
+            node test.js
 
       - run:
           name: Clippy lint

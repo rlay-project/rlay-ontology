@@ -33,10 +33,13 @@ rustc-hex = { version = "2.0.1", optional = true }
 unsigned-varint = { version = "0.2.1", git = "https://github.com/hobofan/unsigned-varint", branch = "no_std", default-features = false, optional = true }
 
 # feature web3_compat
-ethereum-types = { version = "0.5.2", optional = true }
+ethereum-types = { version = "0.4.0", default-features = false, optional = true }
 
 # feature pwasm
 pwasm-std = { version = "0.10", optional = true }
+
+# feature wasm-bindgen
+wasm-bindgen = { version = "0.2.0", optional = true }
 
 # feature examples
 itertools = { version = "0.7.6", optional = true }
@@ -47,11 +50,12 @@ rlay_ontology_build = { path = "../rlay_ontology_build" }
 
 [features]
 default = ["std"]
-std = ["prost", "prost-derive", "bytes", "rustc-hex", "serde/std", "serde_bytes/std", "serialize"]
+std = ["prost", "prost-derive", "bytes", "rustc-hex", "serde/std", "serde_bytes/std", "ethereum-types/std", "serialize"]
 serialize = ["multihash", "cid", "multibase", "serde_derive", "serde_cbor", "serde_bytes", "serde", "integer-encoding"]
 serialize2 = ["unsigned-varint"]
 
 web3_compat = ["ethereum-types"]
 pwasm = ["pwasm-std"]
+wasm_bindgen = ["wasm-bindgen", "web3_compat"]
 
 examples = ["serde_json", "itertools"]

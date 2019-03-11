@@ -345,7 +345,8 @@ fn write_format_variant_wrapper<W: Write>(
         syn::parse_str(&format!("{}Format{}", kind_name, format_suffix)).unwrap();
     let inner_ty: syn::Type = syn::parse_str(kind_name).unwrap();
     let wrapper_struct: TokenStream = parse_quote! {
-        #[derive(Debug, Clone, PartialEq)]
+        #[cfg_attr(feature = "wasm_bindgen", wasm_bindgen)]
+        #[derive(Debug, Clone, PartialEq, Default)]
         pub struct #wrapper_ty {
             inner: #inner_ty
         }
@@ -782,7 +783,8 @@ mod web3 {
         fields: &[Field],
     ) {
         let kind_type: syn::Type = syn::parse_str(kind_name).unwrap();
-        let field_num = fields.len();
+        // +1 for "cid" field
+        let field_num = fields.len() + 1;
         let field_idents: Vec<syn::Ident> =
             fields.iter().map(|field| field.field_ident()).collect();
         let field_names: Vec<String> = fields.iter().map(|n| n.name.to_string()).collect();
@@ -793,6 +795,7 @@ mod web3 {
                     S: serde::Serializer,
                 {
                     let mut s = serializer.serialize_struct(#kind_name, #field_num)?;
+                    s.serialize_field("cid", &self.to_cid().ok().map(|n| FormatWeb3(n.to_bytes())))?;
                     #(s.serialize_field(#field_names, &FormatWeb3(&self.#field_idents))?;)*
 
                     s.end()

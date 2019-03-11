@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "pwasm", feature(alloc))]
+// #![cfg_attr(all(feature = "wasm_bindgen", nightly), feature(custom_attribute))]
 
 #[cfg(feature = "serde")]
 extern crate serde;
@@ -62,6 +63,8 @@ pub mod ontology {
     use pwasm_std::*;
     #[cfg(feature = "std")]
     use serde::de::{Deserialize, Deserializer};
+    #[cfg(feature = "wasm_bindgen")]
+    use wasm_bindgen::prelude::*;
 
     pub trait Canonicalize {
         fn canonicalize(&mut self);
