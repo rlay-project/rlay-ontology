@@ -364,6 +364,81 @@ const buildGrammar = parsedGrammar => {
       },
     ],
   });
+  otherKinds.push({
+    name: 'Literal',
+    fields: [
+      {
+        name: 'datatype',
+        kind: 'IRI',
+      },
+      {
+        name: 'value',
+        kind: 'IRI',
+        required: true,
+      }
+    ]
+  });
+  otherKinds.push({
+    name: 'Datatype',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+    ]
+  });
+  otherKinds.push({
+    name: 'DataIntersectionOf',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'datatypes',
+        kind: 'DatatypeExpression[]',
+      }
+    ]
+  });
+  otherKinds.push({
+    name: 'DataUnionOf',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'datatypes',
+        kind: 'DatatypeExpression[]',
+      }
+    ]
+  });
+  otherKinds.push({
+    name: 'DataComplementOf',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'datatype',
+        kind: 'IRI', // DatatypeExpression
+      }
+    ]
+  });
+  otherKinds.push({
+    name: 'DataOneOf',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'values',
+        kind: 'Literal[]',
+      }
+    ]
+  });
 
   kinds = kinds.concat(
     classExpressionKinds,
@@ -382,6 +457,7 @@ const buildGrammar = parsedGrammar => {
     kindId: i,
     cidPrefix: calculateCidPrefix(i),
     cidPrefixHex: calculateCidPrefixHex(i),
+    fields: uniqFields(kind.fields),
   }));
 
   return {
@@ -426,9 +502,22 @@ const transformKindField = (grammar, field) => {
   field.kind = mapper(fieldExpression.rhs);
 };
 
-// TODO: unify field names that have same name and same kind
+// Unify field names that have same name and same kind
 const uniqFields = (fields) => {
+  const filteredFields = [];
+  fields.forEach((field) => {
+    if (!filteredFields.map(n => n.name).includes(field.name)) {
+      filteredFields.push(field);
+      return;
+    }
+    if (field.name === 'annotations') {
+      // duplicate annotations fields are ignored as they are produced by a lot of entities
+      return;
+    }
+    throw new Error('Unexpected duplicate field', field.name);
+  });
 
+  return filteredFields;
 }
 
 // TODO: move to params.js
@@ -441,7 +530,7 @@ const hackyFieldKindTransformation = field => {
     return 'ObjectProperyExpression[]';
   }
   if (field.kind === 'superDataPropertyExpression') {
-    return 'DataProperyExpression[]';
+    return 'DataPropertyExpression[]';
   }
   return null;
 };

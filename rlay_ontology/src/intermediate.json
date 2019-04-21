@@ -354,7 +354,15 @@
         },
         {
           "name": "superDataPropertyExpression",
-          "kind": "DataProperyExpression[]"
+          "kind": "DataPropertyExpression[]"
+        },
+        {
+          "name": "domain",
+          "kind": "ClassExpression"
+        },
+        {
+          "name": "range",
+          "kind": "DataRange"
         }
       ],
       "expressionKind": "DataPropertyExpression",
@@ -617,6 +625,99 @@
       "kindId": 31,
       "cidPrefix": 49183,
       "cidPrefixHex": "9f8003"
+    },
+    {
+      "name": "Literal",
+      "fields": [
+        {
+          "name": "datatype",
+          "kind": "IRI"
+        },
+        {
+          "name": "value",
+          "kind": "IRI",
+          "required": true
+        }
+      ],
+      "kindId": 32,
+      "cidPrefix": 49184,
+      "cidPrefixHex": "a08003"
+    },
+    {
+      "name": "Datatype",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        }
+      ],
+      "kindId": 33,
+      "cidPrefix": 49185,
+      "cidPrefixHex": "a18003"
+    },
+    {
+      "name": "DataIntersectionOf",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "datatypes",
+          "kind": "DatatypeExpression[]"
+        }
+      ],
+      "kindId": 34,
+      "cidPrefix": 49186,
+      "cidPrefixHex": "a28003"
+    },
+    {
+      "name": "DataUnionOf",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "datatypes",
+          "kind": "DatatypeExpression[]"
+        }
+      ],
+      "kindId": 35,
+      "cidPrefix": 49187,
+      "cidPrefixHex": "a38003"
+    },
+    {
+      "name": "DataComplementOf",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "datatype",
+          "kind": "IRI"
+        }
+      ],
+      "kindId": 36,
+      "cidPrefix": 49188,
+      "cidPrefixHex": "a48003"
+    },
+    {
+      "name": "DataOneOf",
+      "fields": [
+        {
+          "name": "annotations",
+          "kind": "Annotation[]"
+        },
+        {
+          "name": "values",
+          "kind": "Literal[]"
+        }
+      ],
+      "kindId": 37,
+      "cidPrefix": 49189,
+      "cidPrefixHex": "a58003"
     }
   ]
 }

@@ -131,6 +131,44 @@ module.exports = {
         ];
       },
     },
+    DataPropertyRange: {
+      checkExpressionKind: expressionKind => {
+        return expressionKind === 'DataPropertyExpression';
+      },
+      functionParams: params => {
+        assert(params.length === 3);
+        return [
+          {
+            name: 'annotations',
+            kind: params[0],
+          },
+          // skip DataPropertyExpression
+          {
+            name: 'range',
+            kind: params[2],
+          },
+        ];
+      },
+    },
+    DataPropertyDomain: {
+      checkExpressionKind: expressionKind => {
+        return expressionKind === 'DataPropertyExpression';
+      },
+      functionParams: params => {
+        assert(params.length === 3);
+        return [
+          {
+            name: 'annotations',
+            kind: params[0],
+          },
+          // skip DataPropertyExpression
+          {
+            name: 'domain',
+            kind: params[2],
+          },
+        ];
+      },
+    },
   },
   restrictGrammar: {
     removedDeclarations: [
