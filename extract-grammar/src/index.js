@@ -364,6 +364,81 @@ const buildGrammar = parsedGrammar => {
       },
     ],
   });
+  otherKinds.push({
+    name: 'Literal',
+    fields: [
+      {
+        name: 'datatype',
+        kind: 'IRI',
+      },
+      {
+        name: 'value',
+        kind: 'IRI',
+        required: true,
+      }
+    ]
+  });
+  otherKinds.push({
+    name: 'Datatype',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+    ]
+  });
+  otherKinds.push({
+    name: 'DataIntersectionOf',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'datatypes',
+        kind: 'DatatypeExpression[]',
+      }
+    ]
+  });
+  otherKinds.push({
+    name: 'DataUnionOf',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'datatypes',
+        kind: 'DatatypeExpression[]',
+      }
+    ]
+  });
+  otherKinds.push({
+    name: 'DataComplementOf',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'datatype',
+        kind: 'IRI', // DatatypeExpression
+      }
+    ]
+  });
+  otherKinds.push({
+    name: 'DataOneOf',
+    fields: [
+      {
+        name: 'annotations',
+        kind: 'Annotation[]',
+      },
+      {
+        name: 'values',
+        kind: 'Literal[]',
+      }
+    ]
+  });
 
   kinds = kinds.concat(
     classExpressionKinds,

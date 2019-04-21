@@ -92,6 +92,7 @@ module.exports = {
       ],
     },
     { lhs: 'Class', rhs: ['IRI'] },
+    // { lhs: 'Datatype', rhs: ['IRI'] },
     { lhs: 'AnnotationProperty', rhs: ['IRI'] },
     {
       lhs: 'Annotation',
