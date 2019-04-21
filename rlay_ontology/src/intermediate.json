@@ -354,7 +354,15 @@
         },
         {
           "name": "superDataPropertyExpression",
-          "kind": "DataProperyExpression[]"
+          "kind": "DataPropertyExpression[]"
+        },
+        {
+          "name": "domain",
+          "kind": "ClassExpression"
+        },
+        {
+          "name": "range",
+          "kind": "DataRange"
         }
       ],
       "expressionKind": "DataPropertyExpression",
