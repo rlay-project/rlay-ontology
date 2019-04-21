@@ -1,12 +1,13 @@
 #![allow(non_snake_case)]
 
+use cid::ToCid;
 use rlay_ontology::prelude::*;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub fn getEntityCid(val: JsValue) -> JsValue {
     let web3_value: FormatWeb3<Entity> = val.into_serde().unwrap();
-    let serde_value = serde_json::to_value(web3_value).unwrap();
+    let cid_value = web3_value.0.to_cid().ok().map(|n| FormatWeb3(n.to_bytes()));
 
-    JsValue::from_serde(&serde_value["cid"]).unwrap()
+    JsValue::from_serde(&cid_value).unwrap()
 }
