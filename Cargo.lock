@@ -455,7 +455,7 @@ dependencies = [
 
 [[package]]
 name = "rlay_ontology_js"
-version = "0.1.0-alpha.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "bytes 0.5.0 (git+https://github.com/ThinkAlexandria/bytes.git?rev=26b32fb605392015d0efdf7243b064b53759885d)",
  "cid 0.3.0 (git+https://github.com/hobofan/rust-cid?rev=87332277d2cdb5b7cb6484c23b5711c28b44c684)",
