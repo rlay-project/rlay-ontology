@@ -9,27 +9,6 @@ extern crate serde;
 extern crate serde_derive;
 
 #[cfg(feature = "std")]
-extern crate cid;
-#[cfg(feature = "std")]
-extern crate integer_encoding;
-#[cfg(feature = "std")]
-extern crate multibase;
-#[cfg(feature = "std")]
-extern crate multihash;
-#[cfg(feature = "std")]
-extern crate prost;
-#[cfg(feature = "std")]
-#[macro_use]
-extern crate prost_derive;
-#[cfg(feature = "std")]
-extern crate rustc_hex;
-#[cfg(feature = "std")]
-extern crate serde_bytes;
-
-#[cfg(feature = "pwasm")]
-extern crate pwasm_std;
-
-#[cfg(feature = "std")]
 use cid::{Cid, Codec, Error as CidError, Version};
 #[cfg(feature = "std")]
 use integer_encoding::VarIntReader;
