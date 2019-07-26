@@ -26,9 +26,6 @@ extern crate rustc_hex;
 #[cfg(feature = "std")]
 extern crate serde_bytes;
 
-#[cfg(feature = "serialize2")]
-extern crate unsigned_varint;
-
 #[cfg(feature = "pwasm")]
 extern crate pwasm_std;
 
