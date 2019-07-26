@@ -1204,21 +1204,9 @@ mod v0 {
                         writer.write_varint(kind_id)?;
 
                         Ok(match &self {
-                            #(&EntityV0::#variants(ent) => serde_cbor::ser::to_writer_packed(writer, &ent.clone().to_compact_format()).unwrap()),
+                            #(&EntityV0::#variants(ent) => serde_cbor::ser::to_writer(writer, &ent.clone().to_compact_format()).unwrap()),
                             *
                         })
-                    }
-
-                    #[cfg(feature = "serialize2")]
-                    pub fn serialize(&self, buf: &mut [u8]) -> Result<&[u8], ()> {
-                        unsigned_varint::encode::u8(version_number, &mut buf[0..2]);
-                        unsigned_varint::encode::u8(version_number, &mut buf[2..4]);
-
-                        // let kind_id = Into::<Entity>::into(self.clone()).kind().id();
-                        // writer.write_varint(kind_id)?;
-
-                        // TODO
-                        unimplemented!()
                     }
 
                     #[cfg(feature = "std")]
