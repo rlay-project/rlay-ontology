@@ -74,6 +74,12 @@ pub mod ontology {
         const CODEC_CODE: u64;
     }
 
+    pub trait CidFields<'a> {
+        type Iter: Iterator<Item = &'a Vec<u8>>;
+
+        fn iter_cid_fields(&'a self) -> Self::Iter;
+    }
+
     // include!(concat!(env!("OUT_DIR"), "/rlay.ontology.rs"));
     include!(concat!(env!("OUT_DIR"), "/rlay.ontology.entities.rs"));
 
