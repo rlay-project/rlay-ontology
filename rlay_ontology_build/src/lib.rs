@@ -93,6 +93,8 @@ mod main {
                 };
                 write!(out_file, "{}", impl_canonicalize).unwrap();
             }
+            // impl CidFields
+            write_impl_cid_fields(&mut out_file, kind_name, &raw_kind.fields);
 
             write!(
                 out_file,
@@ -109,6 +111,115 @@ mod main {
         let kind_ids: Vec<u64> = kinds.iter().map(|raw_kind| raw_kind.kindId).collect();
         write_entity_kind(&mut out_file, kind_names.clone(), kind_ids.clone());
         write_entity(&mut out_file, kind_names.clone());
+    }
+
+    fn write_impl_cid_fields<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
+        let mut fields = fields.to_owned();
+        fields = fields
+            .into_iter()
+            .filter(|field| {
+                if kind_name == "Annotation" && field.name == "value" {
+                    return false;
+                }
+                if kind_name == "DataPropertyAssertion" && field.name == "target" {
+                    return false;
+                }
+                if kind_name == "NegativeDataPropertyAssertion" && field.name == "target" {
+                    return false;
+                }
+                true
+            })
+            .collect();
+
+        let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+        let iter_struct_name: syn::Type =
+            syn::parse_str(&format!("{}CidFields", kind_name)).unwrap();
+        let iter_struct: TokenStream = parse_quote! {
+            pub struct #iter_struct_name<'a> {
+                inner: &'a #kind_ty,
+                field_index: usize,
+                field_vec_index: usize,
+            }
+        };
+        write!(writer, "{}", iter_struct).unwrap();
+
+        let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+        let iter_struct_name: syn::Type =
+            syn::parse_str(&format!("{}CidFields", kind_name)).unwrap();
+        let iter_struct_impl: TokenStream = parse_quote! {
+            impl<'a> #iter_struct_name<'a> {
+                fn new(inner: &'a #kind_ty) -> Self {
+                    Self {
+                        inner,
+                        field_index: 0,
+                        field_vec_index: 0,
+                    }
+                }
+            }
+        };
+        write!(writer, "{}", iter_struct_impl).unwrap();
+
+        let iter_blocks: Vec<TokenStream> = fields
+            .iter()
+            .map(|field| {
+                let field_ident = field.field_ident();
+                let stmt: TokenStream = match (field.is_array_kind(), field.required) {
+                    (true, _) => parse_quote! {
+                        item = self.inner.#field_ident.get(self.field_vec_index);
+                        self.field_vec_index += 1;
+                        if self.inner.#field_ident.len() <= self.field_vec_index {
+                            self.field_vec_index = 0;
+                            self.field_index += 1;
+                        }
+                    },
+                    (false, true) => parse_quote! {
+                        item = Some(&self.inner.#field_ident);
+                        self.field_index += 1;
+                    },
+                    (false, false) => parse_quote! {
+                        item = self.inner.#field_ident.as_ref();
+                        self.field_index += 1;
+                    },
+                };
+                stmt
+            })
+            .collect();
+
+        let iter_struct_name: syn::Type =
+            syn::parse_str(&format!("{}CidFields", kind_name)).unwrap();
+        let field_indices: Vec<_> = (0..fields.len()).collect();
+        let iter_struct_impl_iterator: TokenStream = parse_quote! {
+            impl<'a> Iterator for #iter_struct_name<'a> {
+                type Item = &'a Vec<u8>;
+
+                fn next(&mut self) -> Option<Self::Item> {
+                    let mut item = None;
+
+                    #(
+                    if item == None && self.field_index == #field_indices {
+                        #iter_blocks
+                    }
+                    )*
+
+                    item
+                }
+            }
+        };
+        write!(writer, "{}", iter_struct_impl_iterator).unwrap();
+
+        let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+        let iter_struct_name: syn::Type =
+            syn::parse_str(&format!("{}CidFields", kind_name)).unwrap();
+        let impl_cid_fields: TokenStream = parse_quote! {
+            impl<'a> CidFields<'a> for #kind_ty {
+                type Iter = #iter_struct_name<'a>;
+
+                fn iter_cid_fields(&'a self) -> #iter_struct_name {
+                    #iter_struct_name::new(self)
+                }
+            }
+        };
+        write!(writer, "{}", impl_cid_fields).unwrap();
     }
 
     fn write_entity_kind<W: Write>(writer: &mut W, kind_names: Vec<String>, kind_ids: Vec<u64>) {
@@ -226,6 +337,54 @@ mod main {
                     fn canonicalize(&mut self) {
                         match self {
                             #(Entity::#variants(ref mut ent) => ent.canonicalize()),
+                            *
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", trait_impl).unwrap();
+        }
+        // impl CidFields
+        {
+            let variants2 = variants.clone();
+            let variants_iter_structs: Vec<syn::Type> = kind_names
+                .clone()
+                .into_iter()
+                .map(|variant| syn::parse_str(&format!("{}CidFields", variant)).unwrap())
+                .collect();
+
+            let enum_impl: TokenStream = parse_quote! {
+                pub enum EntityCidFields<'a> {
+                    #(#variants2(#variants_iter_structs<'a>)),
+                    *
+                }
+            };
+            write!(writer, "{}", enum_impl).unwrap();
+
+            let variants2 = variants.clone();
+            let enum_impl_iterator: TokenStream = parse_quote! {
+                impl<'a> Iterator for EntityCidFields<'a> {
+                    type Item = &'a Vec<u8>;
+
+                    fn next(&mut self) -> Option<Self::Item> {
+                        match self {
+                            #(EntityCidFields::#variants2(inner) => inner.next()),
+                            *
+                        }
+                    }
+                }
+            };
+            write!(writer, "{}", enum_impl_iterator).unwrap();
+
+            let variants2 = variants.clone();
+            let variants3 = variants.clone();
+            let trait_impl: TokenStream = parse_quote! {
+                impl<'a> CidFields<'a> for Entity {
+                    type Iter = EntityCidFields<'a>;
+
+                    fn iter_cid_fields(&'a self) -> EntityCidFields {
+                        match self {
+                            #(Entity::#variants2(inner) => EntityCidFields::#variants3(inner.iter_cid_fields())),
                             *
                         }
                     }
