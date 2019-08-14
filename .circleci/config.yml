@@ -58,9 +58,6 @@ jobs:
 
       # run tests!
       - run:
-          name: Test crate rlay_ontology
-          command: cd rlay_ontology && cargo test
-      - run:
           name: Test crate rlay_ontology (web3_compat)
           command: cd rlay_ontology && cargo test --features web3_compat
       - run:

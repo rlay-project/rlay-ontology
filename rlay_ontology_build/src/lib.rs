@@ -1025,9 +1025,8 @@ mod web3 {
                             #extract_key_blocks
                         }
                      )*
-                    Some(ref unknown) => {
-                        return Err(de::Error::unknown_field(unknown, FIELDS))
-                    }
+                    // ignore unknown fields
+                    Some(_) => {}
                     None => break,
                 }
             }

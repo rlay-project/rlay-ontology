@@ -44,6 +44,9 @@ serde_json = { version = "1", optional = true }
 [build-dependencies]
 rlay_ontology_build = { path = "../rlay_ontology_build" }
 
+[dev-dependencies]
+serde_json = { version = "1" }
+
 [features]
 default = ["std"]
 std = ["prost", "bytes", "rustc-hex", "serde/std", "serde_bytes/std",  "serde_cbor/std", "ethereum-types/std", "serialize"]
