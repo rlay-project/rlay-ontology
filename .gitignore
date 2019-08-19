@@ -2,4 +2,5 @@ bin
 .crates.toml
 
 /target/
+rlay_ontology_build/target
 **/*.rs.bk
