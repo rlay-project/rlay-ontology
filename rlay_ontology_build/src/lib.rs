@@ -1,5 +1,4 @@
 #![allow(unused_imports)]
-#![recursion_limit = "256"]
 extern crate heck;
 extern crate proc_macro2;
 #[macro_use]
@@ -226,7 +225,6 @@ mod main {
         let variants = kind_names_types(&kind_names);
         // EntityKind
         {
-            let variants = variants.clone();
             let type_impl: TokenStream = parse_quote! {
                 #[derive(Debug, Clone, PartialEq)]
                 pub enum EntityKind {
@@ -238,10 +236,6 @@ mod main {
         }
         // Into<&'a str>
         {
-            let variants = variants.clone();
-            let variants2 = variants.clone();
-            let kind_names = kind_names.clone();
-            let kind_names2 = kind_names.clone();
             let trait_impl: TokenStream = parse_quote! {
                 impl<'a> Into<&'a str> for EntityKind {
                     fn into(self) -> &'a str {
@@ -255,7 +249,7 @@ mod main {
                 impl<'a> Into<&'a str> for &'a EntityKind {
                     fn into(self) -> &'a str {
                         match &self {
-                            #(EntityKind::#variants2 => #kind_names2),
+                            #(EntityKind::#variants => #kind_names),
                             *
                         }
                     }
@@ -265,12 +259,6 @@ mod main {
         }
         // impl EntityKind
         {
-            let kind_names = kind_names.clone();
-            let kind_ids = kind_ids.clone();
-            let variants = variants.clone();
-            let variants2 = variants.clone();
-            let variants3 = variants.clone();
-            let variants4 = variants.clone();
             let trait_impl: TokenStream = parse_quote! {
                 impl EntityKind {
                     pub fn from_name(name: &str) -> Result<Self, ()> {
@@ -282,13 +270,13 @@ mod main {
 
                     pub fn empty_entity(&self) -> Entity {
                         match self {
-                            #(EntityKind::#variants2 => #variants3::default().into()),*
+                            #(EntityKind::#variants => #variants::default().into()),*
                         }
                     }
 
                     pub fn id(&self) -> u64 {
                         match self {
-                            #(EntityKind::#variants4 => #kind_ids),*
+                            #(EntityKind::#variants => #kind_ids),*
                         }
                     }
                 }
@@ -302,12 +290,10 @@ mod main {
 
         // Entity
         {
-            let variants = variants.clone();
-            let variants2 = variants.clone();
             let type_impl: TokenStream = parse_quote! {
                 #[derive(Debug, Clone, PartialEq)]
                 pub enum Entity {
-                    #(#variants(#variants2)),
+                    #(#variants(#variants)),
                     *
                 }
             };
@@ -315,7 +301,6 @@ mod main {
         }
         // impl ToCid
         {
-            let variants = variants.clone();
             let trait_impl: TokenStream = parse_quote! {
                 #[cfg(feature = "std")]
                 impl ToCid for Entity {
@@ -331,7 +316,6 @@ mod main {
         }
         // impl Canonicalize
         {
-            let variants = variants.clone();
             let trait_impl: TokenStream = parse_quote! {
                 impl Canonicalize for Entity {
                     fn canonicalize(&mut self) {
@@ -346,7 +330,6 @@ mod main {
         }
         // impl CidFields
         {
-            let variants2 = variants.clone();
             let variants_iter_structs: Vec<syn::Type> = kind_names
                 .clone()
                 .into_iter()
@@ -355,20 +338,19 @@ mod main {
 
             let enum_impl: TokenStream = parse_quote! {
                 pub enum EntityCidFields<'a> {
-                    #(#variants2(#variants_iter_structs<'a>)),
+                    #(#variants(#variants_iter_structs<'a>)),
                     *
                 }
             };
             write!(writer, "{}", enum_impl).unwrap();
 
-            let variants2 = variants.clone();
             let enum_impl_iterator: TokenStream = parse_quote! {
                 impl<'a> Iterator for EntityCidFields<'a> {
                     type Item = &'a Vec<u8>;
 
                     fn next(&mut self) -> Option<Self::Item> {
                         match self {
-                            #(EntityCidFields::#variants2(inner) => inner.next()),
+                            #(EntityCidFields::#variants(inner) => inner.next()),
                             *
                         }
                     }
@@ -376,15 +358,13 @@ mod main {
             };
             write!(writer, "{}", enum_impl_iterator).unwrap();
 
-            let variants2 = variants.clone();
-            let variants3 = variants.clone();
             let trait_impl: TokenStream = parse_quote! {
                 impl<'a> CidFields<'a> for Entity {
                     type Iter = EntityCidFields<'a>;
 
                     fn iter_cid_fields(&'a self) -> EntityCidFields {
                         match self {
-                            #(Entity::#variants2(inner) => EntityCidFields::#variants3(inner.iter_cid_fields())),
+                            #(Entity::#variants(inner) => EntityCidFields::#variants(inner.iter_cid_fields())),
                             *
                         }
                     }
@@ -394,13 +374,11 @@ mod main {
         }
         // impl Entity
         {
-            let variants = variants.clone();
-            let variants2 = variants.clone();
             let type_impl: TokenStream = parse_quote! {
                 impl Entity {
                     pub fn kind(&self) -> EntityKind {
                         match &self {
-                            #(Entity::#variants(_) => EntityKind::#variants2),
+                            #(Entity::#variants(_) => EntityKind::#variants),
                             *
                         }
                     }
@@ -410,14 +388,12 @@ mod main {
         }
         // impl FromABIV2ResponseHinted
         {
-            let variants = variants.clone();
-            let variants2 = variants.clone();
             let trait_impl: TokenStream = parse_quote! {
                 #[cfg(feature = "web3_compat")]
                 impl FromABIV2ResponseHinted for Entity {
                     fn from_abiv2(bytes: &[u8], kind: &EntityKind) -> Self {
                         match kind {
-                            #(EntityKind::#variants => Entity::#variants2(FromABIV2Response::from_abiv2(bytes))),
+                            #(EntityKind::#variants => Entity::#variants(FromABIV2Response::from_abiv2(bytes))),
                             *
                         }
                     }
@@ -539,10 +515,8 @@ fn write_format_variant_wrapper<W: Write>(
         let conversion_trait: syn::Type =
             syn::parse_str(&format!("Format{}", format_suffix)).unwrap();
         let format_suffix_lc = format_suffix.to_lowercase();
-        let to_fn_ident: syn::Ident =
-            syn::parse_str(&format!("to_{}_format", format_suffix_lc)).unwrap();
-        let from_fn_ident: syn::Ident =
-            syn::parse_str(&format!("from_{}_format", format_suffix_lc)).unwrap();
+        let to_fn_ident = format_ident!("to_{}_format", format_suffix_lc);
+        let from_fn_ident = format_ident!("from_{}_format", format_suffix_lc);
 
         let trait_impl: TokenStream = parse_quote! {
             #[cfg(feature = "std")]
@@ -687,11 +661,10 @@ mod compact {
         let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
         let wrapper_ty: syn::Type = syn::parse_str(&format!("{}FormatCompact", kind_name)).unwrap();
         let field_idents: Vec<_> = fields.iter().map(|n| n.field_ident()).collect();
-        let field_idents2 = field_idents.clone();
         let constructor_call: TokenStream = parse_quote! {
             Ok(#wrapper_ty {
                 inner: #kind_ty {
-                    #(#field_idents: helper_instance.#field_idents2),
+                    #(#field_idents: helper_instance.#field_idents),
                     *
                 }
             })
@@ -772,8 +745,7 @@ mod web3 {
             .iter()
             .enumerate()
             .map(|(i, field)| {
-                let offset_ident: syn::Ident =
-                    syn::parse_str(&format!("{}_offset", field.name.to_snake_case())).unwrap();
+                let offset_ident = format_ident!("{}_offset", field.name.to_snake_case());
                 let offset_start = i * 32;
                 let offset_end = (i + 1) * 32;
                 let tokens: TokenStream = parse_quote! {
@@ -793,15 +765,12 @@ mod web3 {
                 }).unwrap();
 
                 let field_ident = field.field_ident();
-                let offset_ident: syn::Ident =
-                    syn::parse_str(&format!("{}_offset", field.name.to_snake_case())).unwrap();
+                let offset_ident = format_ident!("{}_offset", field.name.to_snake_case());
 
                 let next_field = fields.get(i + 1);
                 let tokens: TokenStream = match next_field {
                     Some(next_field) => {
-                        let next_offset_ident: syn::Ident =
-                            syn::parse_str(&format!("{}_offset", next_field.name.to_snake_case()))
-                                .unwrap();
+                        let next_offset_ident = format_ident!("{}_offset", next_field.name.to_snake_case());
                         parse_quote! {
                             decode_param!(#field_kind_marker; bytes, #field_ident, #offset_ident, #next_offset_ident);
                         }
@@ -861,10 +830,6 @@ mod web3 {
 
         // SerializeFormatWeb3 for Entity
         {
-            let variants = variants.clone();
-            let variants2 = variants.clone();
-            let variants3 = variants.clone();
-            let wrapper_variants = wrapper_variants.clone();
             let type_impl: TokenStream = parse_quote! {
                 impl SerializeFormatWeb3 for Entity {
                     fn serialize_format_web3<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -881,7 +846,7 @@ mod web3 {
                         impl Into<EntityFormatWeb3> for Entity {
                             fn into(self) -> EntityFormatWeb3 {
                                 match self {
-                                    #(Entity::#variants3(ent) => EntityFormatWeb3::#variants2(ent.into())),
+                                    #(Entity::#variants(ent) => EntityFormatWeb3::#variants(ent.into())),
                                     *
                                 }
                             }
@@ -896,10 +861,6 @@ mod web3 {
         }
         // DeserializeFormatWeb3 for Entity
         {
-            let variants = variants.clone();
-            let variants2 = variants.clone();
-            let variants3 = variants.clone();
-            let wrapper_variants = wrapper_variants.clone();
             let type_impl: TokenStream = parse_quote! {
                 impl<'de> DeserializeFormatWeb3<'de> for Entity {
                     fn deserialize_format_web3<D>(deserializer: D) -> Result<Self, D::Error>
@@ -916,7 +877,7 @@ mod web3 {
                         impl From<EntityFormatWeb3> for Entity {
                             fn from(original: EntityFormatWeb3) -> Entity {
                                 match original {
-                                    #(EntityFormatWeb3::#variants3(ent) => Entity::#variants2(ent.0)),
+                                    #(EntityFormatWeb3::#variants(ent) => Entity::#variants(ent.0)),
                                     *
                                 }
                             }
@@ -989,7 +950,6 @@ mod web3 {
 
         // tries to extract set the field variable if the field exists in the map
         let field_names_raw: Vec<String> = fields.iter().map(|n| n.name.clone()).collect();
-        let field_names_raw2 = field_names_raw.clone();
         let field_names_snake: Vec<syn::Ident> = fields.iter().map(|n| n.field_ident()).collect();
         let extract_key_blocks: Vec<TokenStream> = fields
             .iter()
@@ -1020,7 +980,7 @@ mod web3 {
                     #(
                         Some(ref key) if key == #field_names_raw => {
                             if #field_names_snake.is_some() {{
-                                return Err(de::Error::duplicate_field(#field_names_raw2));
+                                return Err(de::Error::duplicate_field(#field_names_raw));
                             }}
                             #extract_key_blocks
                         }
@@ -1130,12 +1090,10 @@ mod v0 {
 
         // Entity
         {
-            let variants = variants.clone();
-            let variants2 = variants.clone();
             let type_impl: TokenStream = parse_quote! {
                 #[derive(Debug, Clone, PartialEq)]
                 pub enum EntityV0 {
-                    #(#variants(#variants2)),
+                    #(#variants(#variants)),
                     *
                 }
             };
@@ -1158,13 +1116,11 @@ mod v0 {
         // }
         // impl Into<Entity>
         {
-            let variants = variants.clone();
-            let variants2 = variants.clone();
             let type_impl: TokenStream = parse_quote! {
                 impl Into<Entity> for EntityV0 {
                     fn into(self) -> Entity {
                         match self {
-                            #(EntityV0::#variants(ent) => Entity::#variants2(ent)),
+                            #(EntityV0::#variants(ent) => Entity::#variants(ent)),
                             *
                         }
                     }
@@ -1174,13 +1130,11 @@ mod v0 {
         }
         // impl Into<EntityV0>
         {
-            let variants = variants.clone();
-            let variants2 = variants.clone();
             let type_impl: TokenStream = parse_quote! {
                 impl Into<EntityV0> for Entity {
                     fn into(self) -> EntityV0 {
                         match self {
-                            #(Entity::#variants(ent) => EntityV0::#variants2(ent)),
+                            #(Entity::#variants(ent) => EntityV0::#variants(ent)),
                             *
                         }
                     }
@@ -1190,8 +1144,6 @@ mod v0 {
         }
         // impl EntityV0
         {
-            let variants = variants.clone();
-            let variants2 = variants.clone();
             let trait_impl: TokenStream = parse_quote! {
                 impl EntityV0 {
                     #[cfg(feature = "std")]
@@ -1218,7 +1170,7 @@ mod v0 {
 
                         let kind_id: u64 = reader.read_varint()?;
                         Ok(match kind_id {
-                            #(#kind_ids => EntityV0::#variants2(FormatCompact::from_compact_format(serde_cbor::de::from_reader(reader).unwrap()))),
+                            #(#kind_ids => EntityV0::#variants(FormatCompact::from_compact_format(serde_cbor::de::from_reader(reader).unwrap()))),
                             *,
                             // TODO
                             _ => panic!("Unrecognized kind id.")
