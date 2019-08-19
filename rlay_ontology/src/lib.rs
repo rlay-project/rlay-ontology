@@ -9,7 +9,7 @@ extern crate serde;
 extern crate serde_derive;
 
 #[cfg(feature = "std")]
-use cid::{Cid, Codec, Error as CidError, Version};
+use cid_fork_rlay::{Cid, Codec, Error as CidError, Version};
 #[cfg(feature = "std")]
 use integer_encoding::VarIntReader;
 

@@ -9,7 +9,7 @@ extern crate rustc_hex;
 extern crate serde_cbor;
 extern crate serde_json;
 
-use cid::ToCid;
+use cid_fork_rlay::ToCid;
 use integer_encoding::VarInt;
 use itertools::Itertools;
 use multibase::{encode as base_encode, Base};
