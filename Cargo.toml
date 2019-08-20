@@ -7,8 +7,3 @@ members = [
 exclude = [
   "rlay_ontology_nostd_test"
 ]
-
-[patch.crates-io]
-# see https://github.com/ipld/rust-cid/pull/9
-cid = { git = 'https://github.com/hobofan/rust-cid', rev = '87332277d2cdb5b7cb6484c23b5711c28b44c684' }
-

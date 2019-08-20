@@ -4,7 +4,7 @@ pub mod web3;
 #[cfg(feature = "web3_compat")]
 use self::web3::{FromABIV2Response, FromABIV2ResponseHinted};
 #[cfg(feature = "std")]
-use cid::{Cid, Codec, Error as CidError, ToCid, Version};
+use cid_fork_rlay::{Cid, Codec, Error as CidError, ToCid, Version};
 #[cfg(feature = "std")]
 use multihash::encode;
 #[cfg(feature = "std")]

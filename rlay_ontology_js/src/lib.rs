@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use cid::ToCid;
+use cid_fork_rlay::ToCid;
 use rlay_ontology::prelude::*;
 use wasm_bindgen::prelude::*;
 

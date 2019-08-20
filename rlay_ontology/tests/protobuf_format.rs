@@ -1,4 +1,4 @@
-use cid::ToCid;
+use cid_fork_rlay::ToCid;
 use prost::Message;
 use rlay_ontology::ontology::*;
 use rustc_hex::FromHex;
