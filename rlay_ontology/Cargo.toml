@@ -1,7 +1,9 @@
 [package]
 name = "rlay_ontology"
-version = "0.2.2"
+description = "Rlay ontology model"
+version = "0.2.3"
 authors = ["Maximilian Goisser <goisser94@gmail.com>"]
+license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [lib]
@@ -42,7 +44,7 @@ itertools = { version = "0.7.6", optional = true }
 serde_json = { version = "1", optional = true }
 
 [build-dependencies]
-rlay_ontology_build = { path = "../rlay_ontology_build" }
+rlay_ontology_build = { version = "0.2.3", path = "../rlay_ontology_build" }
 
 [dev-dependencies]
 serde_json = { version = "1" }

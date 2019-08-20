@@ -414,7 +414,7 @@ dependencies = [
 
 [[package]]
 name = "rlay_ontology"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "cid_fork_rlay 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -425,7 +425,7 @@ dependencies = [
  "multihash 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pwasm-std 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rlay_ontology_build 0.2.2",
+ "rlay_ontology_build 0.2.3",
  "rustc-hex 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_bytes 0.11.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -437,7 +437,7 @@ dependencies = [
 
 [[package]]
 name = "rlay_ontology_build"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "heck 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc-macro2 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -454,7 +454,7 @@ version = "0.1.0-alpha.1"
 dependencies = [
  "bytes 0.5.0 (git+https://github.com/ThinkAlexandria/bytes.git?rev=26b32fb605392015d0efdf7243b064b53759885d)",
  "cid_fork_rlay 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rlay_ontology 0.2.2",
+ "rlay_ontology 0.2.3",
  "serde 1.0.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",

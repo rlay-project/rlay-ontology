@@ -1,7 +1,9 @@
 [package]
 name = "rlay_ontology_build"
-version = "0.2.2"
+description = "Rlay ontology model"
+version = "0.2.3"
 authors = ["Maximilian Goisser <goisser94@gmail.com>"]
+license = "MIT OR Apache-2.0"
 
 [lib]
 path = "src/lib.rs"
