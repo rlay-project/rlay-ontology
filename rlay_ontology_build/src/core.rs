@@ -181,7 +181,7 @@ fn write_entity_kind<W: Write>(writer: &mut W, kind_names: Vec<String>, kind_ids
     // EntityKind
     {
         let type_impl: TokenStream = parse_quote! {
-            #[derive(Debug, Clone, PartialEq)]
+            #[derive(Debug, Clone, PartialEq, strum_macros::EnumVariantNames)]
             pub enum EntityKind {
                 #(#variants),
                 *
