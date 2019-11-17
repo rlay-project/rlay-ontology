@@ -4,6 +4,9 @@ pub mod web3;
 #[cfg(feature = "web3_compat")]
 use self::web3::{FromABIV2Response, FromABIV2ResponseHinted};
 #[cfg(feature = "std")]
+use ambassador::delegatable_trait_remote;
+use ambassador::{delegatable_trait, Delegate};
+#[cfg(feature = "std")]
 use cid_fork_rlay::{Cid, Codec, Error as CidError, ToCid, Version};
 #[cfg(feature = "std")]
 use multihash::encode;
@@ -18,6 +21,13 @@ use serde::de::{Deserialize, Deserializer};
 #[cfg(feature = "wasm_bindgen")]
 use wasm_bindgen::prelude::*;
 
+#[cfg_attr(feature = "std", delegatable_trait_remote)]
+#[cfg(feature = "std")]
+trait ToCid {
+    fn to_cid(&self) -> Result<Cid, CidError>;
+}
+
+#[delegatable_trait]
 pub trait Canonicalize {
     fn canonicalize(&mut self);
 }
