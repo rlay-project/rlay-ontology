@@ -181,7 +181,7 @@ fn write_entity_kind<W: Write>(writer: &mut W, kind_names: Vec<String>, kind_ids
     // EntityKind
     {
         let type_impl: TokenStream = parse_quote! {
-            #[derive(Debug, Clone, PartialEq)]
+            #[derive(Debug, Clone, PartialEq, strum_macros::EnumVariantNames)]
             pub enum EntityKind {
                 #(#variants),
                 *
@@ -246,42 +246,15 @@ fn write_entity<W: Write>(writer: &mut W, kind_names: Vec<String>) {
     // Entity
     {
         let type_impl: TokenStream = parse_quote! {
-            #[derive(Debug, Clone, PartialEq)]
+            #[derive(Debug, Clone, PartialEq, Delegate)]
+            #[delegate(Canonicalize)]
+            #[cfg_attr(feature = "std", delegate(ToCid))]
             pub enum Entity {
                 #(#variants(#variants)),
                 *
             }
         };
         write!(writer, "{}", type_impl).unwrap();
-    }
-    // impl ToCid
-    {
-        let trait_impl: TokenStream = parse_quote! {
-            #[cfg(feature = "std")]
-            impl ToCid for Entity {
-                fn to_cid(&self) -> Result<Cid, CidError> {
-                    match &self {
-                        #(Entity::#variants(ent) => ent.to_cid()),
-                        *
-                    }
-                }
-            }
-        };
-        write!(writer, "{}", trait_impl).unwrap();
-    }
-    // impl Canonicalize
-    {
-        let trait_impl: TokenStream = parse_quote! {
-            impl Canonicalize for Entity {
-                fn canonicalize(&mut self) {
-                    match self {
-                        #(Entity::#variants(ref mut ent) => ent.canonicalize()),
-                        *
-                    }
-                }
-            }
-        };
-        write!(writer, "{}", trait_impl).unwrap();
     }
     // impl CidFields
     {
