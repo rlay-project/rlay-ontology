@@ -62,3 +62,8 @@ pwasm = ["pwasm-std"]
 wasm_bindgen = ["wasm-bindgen", "web3_compat"]
 
 examples = ["serde_json", "itertools"]
+
+[package.metadata.release]
+no-dev-version = true
+tag-prefix = ""
+tag-name = "{{version}}"
