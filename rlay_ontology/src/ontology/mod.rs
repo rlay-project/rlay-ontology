@@ -42,6 +42,12 @@ pub trait CidFields<'a> {
     fn iter_cid_fields(&'a self) -> Self::Iter;
 }
 
+pub trait DataFields<'a> {
+    type Iter: Iterator<Item = &'a Vec<u8>>;
+
+    fn iter_data_fields(&'a self) -> Self::Iter;
+}
+
 // include!(concat!(env!("OUT_DIR"), "/rlay.ontology.rs"));
 include!(concat!(env!("OUT_DIR"), "/rlay.ontology.entities.rs"));
 
