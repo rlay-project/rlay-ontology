@@ -6,3 +6,13 @@ fn entity_variants() {
 
     assert!(entity_variants.contains(&"Annotation"));
 }
+
+#[test]
+fn annotation_data_field_names() {
+    assert!(Annotation::data_field_names().contains(&"value"));
+}
+
+#[test]
+fn annotation_cid_field_names() {
+    assert!(Annotation::cid_field_names().contains(&"property"));
+}

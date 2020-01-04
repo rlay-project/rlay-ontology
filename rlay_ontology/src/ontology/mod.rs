@@ -48,6 +48,14 @@ pub trait DataFields<'a> {
     fn iter_data_fields(&'a self) -> Self::Iter;
 }
 
+pub trait CidFieldNames {
+    fn cid_field_names() -> &'static [&'static str];
+}
+
+pub trait DataFieldNames {
+    fn data_field_names() -> &'static [&'static str];
+}
+
 // include!(concat!(env!("OUT_DIR"), "/rlay.ontology.rs"));
 include!(concat!(env!("OUT_DIR"), "/rlay.ontology.entities.rs"));
 

@@ -54,6 +54,10 @@ pub fn build_macros_applied_file(src_path: &str, out_path: &str) {
         write_impl_cid_fields(&mut out_file, kind_name, &raw_kind.fields);
         // impl DataFields
         write_impl_data_fields(&mut out_file, kind_name, &raw_kind.fields);
+        // impl CidFieldNames
+        write_impl_cid_field_names(&mut out_file, kind_name, &raw_kind.fields);
+        // impl DataFieldNames
+        write_impl_data_field_names(&mut out_file, kind_name, &raw_kind.fields);
 
         write!(
             out_file,
@@ -89,6 +93,22 @@ fn get_cid_fields(kind_name: &str, fields: &[Field]) -> Vec<Field> {
             true
         })
         .collect()
+}
+
+fn write_impl_cid_field_names<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
+    let fields = get_cid_fields(kind_name, fields);
+    let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+
+    let field_names: Vec<_> = fields.into_iter().map(|n| n.name).collect();
+
+    let impl_for_struct: TokenStream = parse_quote! {
+        impl CidFieldNames for #kind_ty {
+            fn cid_field_names() -> &'static [&'static str] {
+                &[#(#field_names),*]
+            }
+        }
+    };
+    write!(writer, "{}", impl_for_struct).unwrap();
 }
 
 fn write_impl_cid_fields<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
@@ -215,6 +235,22 @@ fn get_data_fields(kind_name: &str, fields: &[Field]) -> Vec<Field> {
             false
         })
         .collect()
+}
+
+fn write_impl_data_field_names<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
+    let fields = get_data_fields(kind_name, fields);
+    let kind_ty: syn::Type = syn::parse_str(kind_name).unwrap();
+
+    let field_names: Vec<_> = fields.into_iter().map(|n| n.name).collect();
+
+    let impl_for_struct: TokenStream = parse_quote! {
+        impl DataFieldNames for #kind_ty {
+            fn data_field_names() -> &'static [&'static str] {
+                &[#(#field_names),*]
+            }
+        }
+    };
+    write!(writer, "{}", impl_for_struct).unwrap();
 }
 
 fn write_impl_data_fields<W: Write>(writer: &mut W, kind_name: &str, fields: &[Field]) {
