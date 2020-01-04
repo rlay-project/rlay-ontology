@@ -72,6 +72,20 @@ pub fn build_macros_applied_file(src_path: &str, out_path: &str) {
         .map(|raw_kind| raw_kind.name.to_owned())
         .collect();
     let kind_ids: Vec<u64> = kinds.iter().map(|raw_kind| raw_kind.kindId).collect();
+    let kind_types: Vec<syn::Type> = kind_names
+        .iter()
+        .map(|kind_name| syn::parse_str(kind_name).unwrap())
+        .collect();
+
+    let macro_call_with_entity_kinds = quote! {
+        #[macro_export]
+        macro_rules! call_with_entity_kinds {
+            (ALL; $cb:ident!) => {
+                #($cb!(#kind_types);)*
+            };
+        }
+    };
+    write!(out_file, "{}", macro_call_with_entity_kinds,).unwrap();
     write_entity_kind(&mut out_file, kind_names.clone(), kind_ids.clone());
     write_entity(&mut out_file, kind_names.clone());
 }

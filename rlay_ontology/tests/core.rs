@@ -16,3 +16,16 @@ fn annotation_data_field_names() {
 fn annotation_cid_field_names() {
     assert!(Annotation::cid_field_names().contains(&"property"));
 }
+
+#[test]
+fn call_with_entity_kinds() {
+    let mut _abc = vec![];
+
+    macro_rules! test_field_names {
+        ($kind:path) => {
+            _abc = <$kind>::data_field_names().into_iter().collect();
+        };
+    }
+
+    rlay_ontology::call_with_entity_kinds!(ALL; test_field_names!);
+}
