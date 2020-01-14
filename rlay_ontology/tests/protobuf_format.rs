@@ -26,7 +26,7 @@ fn protobuf_format_decoding() {
         ..Class::default()
     };
 
-    let decoded_klass = Class::decode(&bytes).unwrap();
+    let decoded_klass = Class::decode(bytes.as_slice()).unwrap();
 
     assert_eq!(expected_klass, decoded_klass);
 }
