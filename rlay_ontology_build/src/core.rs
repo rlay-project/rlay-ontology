@@ -240,6 +240,12 @@ fn get_data_fields(kind_name: &str, fields: &[Field]) -> Vec<Field> {
             if kind_name == "Annotation" && field.name == "value" {
                 return true;
             }
+            if kind_name == "AnnotationAssertion" && field.name == "value" {
+                return true;
+            }
+            if kind_name == "NegativeAnnotationAssertion" && field.name == "value" {
+                return true;
+            }
             if kind_name == "DataPropertyAssertion" && field.name == "target" {
                 return true;
             }
