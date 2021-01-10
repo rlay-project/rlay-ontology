@@ -4,11 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "mkdir -p build && npm run build:parsed && npm run build:intermediate && npm run build:solidity && npm run build:protobuf",
+    "build": "mkdir -p build && npm run build:parsed && npm run build:intermediate && npm run build:solidity && npm run build:protobuf && npm run build:mapping",
     "build:parsed": "node src/parseBnfCli.js",
     "build:intermediate": "node src/index.js",
     "build:solidity": "node src/generateSolidty.js",
     "build:protobuf": "node src/generatePb2.js",
+    "build:mapping": "node src/generateV0FieldMapping.js",
     "test": "jest"
   },
   "author": "",
